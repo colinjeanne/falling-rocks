@@ -10,18 +10,45 @@
     </style>
   </head>
   <body>
-    <canvas id="board" width="640" height="640"></canvas>
+    <div>
+      <canvas id="board" width="640" height="640"></canvas>
+      <div>
+        <div>
+          <label for="widthInput">Width</label>
+          <input id="widthInput" type="number" min="1" value="10">
+        </div>
+        <div>
+          <label for="heightInput">Height</label>
+          <input id="heightInput" type="number" min="1" value="10">
+        </div>
+        <div>
+          <select id="selectedTile">
+            <option value="0" selected>Black</option>
+            <option value="1">Red</option>
+            <option value="2">Green</option>
+            <option value="3">Blue</option>
+            <option value="4">Yellow</option>
+          </select>
+        </div>
+        <div>
+          <output id="generatedBoard"></output>
+        </div>
+      </div>
+    </div>
   </body>
   <script type="module">
     function drawTile(context, tile, x, y, width, height) {
       context.save();
 
-      if (tile === 0) {
-        context.fillStyle = "red";
-      } else if (tile === 1) {
-        context.fillStyle = "green";
+      const tileStyles = {
+        0: "black",
+        1: "red",
+        2: "green",
+        3: "blue",
+        4: "yellow",
       }
 
+      context.fillStyle = tileStyles[tile];
       context.fillRect(x, y, width, height);
 
       context.restore();
@@ -41,19 +68,71 @@
       });
     }
 
-    const boardElement = document.getElementById("board");
-    const board = {
-      width: 5,
-      height: 5,
-      tiles: [
-        0, 0, 0, 0, 0,
-        0, 1, 1, 1, 0,
-        0, 1, 1, 1, 0,
-        0, 1, 1, 1, 0,
-        0, 0, 0, 0, 0,
-      ],
-    };
+    function newBoard(width, height) {
+      return {
+        width,
+        height,
+        tiles: Array(width * height).fill(0, 0),
+      };
+    }
 
-    renderBoard(boardElement, board);
+    function getTile(board, x, y) {
+      return board.tiles[x + y * board.width];
+    }
+
+    function setTile(board, x, y, tile) {
+      board.tiles[x + y * board.width] = tile;
+    }
+
+    function boardToString(board) {
+      return JSON.stringify(board);
+    }
+
+    function updateTile(mouseEvent) {
+      const tileWidth = boardElement.width / board.width;
+      const tileHeight = boardElement.height / board.height;
+
+      const tileX = Math.floor(mouseEvent.offsetX / tileWidth);
+      const tileY = Math.floor(mouseEvent.offsetY / tileHeight);
+
+      const tile = parseInt(selectedTileInput.selectedOptions[0].value);
+      const originalTile = getTile(board, tileX, tileY);
+
+      if (tile !== originalTile) {
+        setTile(board, tileX, tileY, tile);
+        generatedBoardOutput.value = boardToString(board);
+        renderBoard(boardElement, board);
+      }
+    }
+
+    const boardElement = document.getElementById("board");
+    const widthInput = document.getElementById("widthInput");
+    const heightInput = document.getElementById("heightInput");
+    const selectedTileInput = document.getElementById("selectedTile");
+    const generatedBoardOutput = document.getElementById("generatedBoard");
+
+    let board;
+    function recreateBoard() {
+      board = newBoard(widthInput.valueAsNumber, heightInput.valueAsNumber);
+      generatedBoardOutput.value = boardToString(board);
+      renderBoard(boardElement, board);
+    }
+
+    widthInput.addEventListener("change", recreateBoard);
+    heightInput.addEventListener("change", recreateBoard);
+
+    let isDragDrawing = false;
+
+    boardElement.addEventListener("mousedown", () => isDragDrawing = true);
+    document.addEventListener("mouseup", () => isDragDrawing = false);
+
+    boardElement.addEventListener("mousemove", ev => {
+      if (isDragDrawing) {
+        updateTile(ev);
+      }
+    });
+    boardElement.addEventListener("click", updateTile);
+
+    recreateBoard();
   </script>
 </html>
