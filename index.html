@@ -3,5 +3,57 @@
   <head>
     <title>Rocks</title>
     <meta charset="utf-8">
+    <style>
+      #board {
+        border: thin solid black;
+      }
+    </style>
   </head>
+  <body>
+    <canvas id="board" width="640" height="640"></canvas>
+  </body>
+  <script type="module">
+    function drawTile(context, tile, x, y, width, height) {
+      context.save();
+
+      if (tile === 0) {
+        context.fillStyle = "red";
+      } else if (tile === 1) {
+        context.fillStyle = "green";
+      }
+
+      context.fillRect(x, y, width, height);
+
+      context.restore();
+    }
+
+    function renderBoard(canvas, board) {
+      const context = canvas.getContext("2d");
+
+      const tileWidth = canvas.width / board.width;
+      const tileHeight = canvas.height / board.height;
+
+      board.tiles.forEach((tile, index) => {
+        const tileX = index % board.width;
+        const tileY = Math.floor(index / board.width);
+
+        drawTile(context, tile, tileX * tileWidth, tileY * tileHeight, tileWidth, tileHeight);
+      });
+    }
+
+    const boardElement = document.getElementById("board");
+    const board = {
+      width: 5,
+      height: 5,
+      tiles: [
+        0, 0, 0, 0, 0,
+        0, 1, 1, 1, 0,
+        0, 1, 1, 1, 0,
+        0, 1, 1, 1, 0,
+        0, 0, 0, 0, 0,
+      ],
+    };
+
+    renderBoard(boardElement, board);
+  </script>
 </html>
