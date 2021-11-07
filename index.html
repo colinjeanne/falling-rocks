@@ -41,19 +41,22 @@
     </div>
   </body>
   <script type="module">
+    const tiles = new Image();
+
     function drawTile(context, tile, x, y, width, height) {
       context.save();
 
-      const tileStyles = {
-        0: "black",
-        1: "red",
-        2: "green",
-        3: "blue",
-        4: "yellow",
-      }
-
-      context.fillStyle = tileStyles[tile];
-      context.fillRect(x, y, width, height);
+      context.drawImage(
+        tiles,
+        0,
+        tiles.naturalWidth * tile,
+        tiles.naturalWidth,
+        tiles.naturalWidth,
+        x,
+        y,
+        width,
+        height
+      );
 
       context.restore();
     }
@@ -206,7 +209,10 @@
       boardElement.removeEventListener("click", updateTile);
     });
 
-    buildButton.click();
-    recreateBoard();
+    tiles.addEventListener("load", () => {
+      buildButton.click();
+      recreateBoard();
+    });
+    tiles.src = "assets/tiles.svg";
   </script>
 </html>
