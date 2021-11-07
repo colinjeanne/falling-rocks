@@ -56,13 +56,21 @@
       context.restore();
     }
 
-    function renderBoard(canvas, board) {
+    function renderBoard(canvas, board, originalBoard) {
       const context = canvas.getContext("2d");
 
       const tileWidth = canvas.width / board.width;
       const tileHeight = canvas.height / board.height;
 
+      const areBoardsCompatible =
+        board.width === originalBoard?.width &&
+        board.height === originalBoard?.height;
+
       board.tiles.forEach((tile, index) => {
+        if (areBoardsCompatible && tile === originalBoard.tiles[index]) {
+          return;
+        }
+
         const tileX = index % board.width;
         const tileY = Math.floor(index / board.width);
 
@@ -92,6 +100,14 @@
     function setTile(board, x, y, tile) {
       validateCoordinate(board, x, y);
       board.tiles[x + y * board.width] = tile;
+    }
+
+    function cloneBoard(board) {
+      return {
+        width: board.width,
+        height: board.height,
+        tiles: board.tiles.slice(),
+      };
     }
 
     function rle(arr) {
@@ -135,9 +151,10 @@
       const originalTile = getTile(board, tileX, tileY);
 
       if (tile !== originalTile) {
+        const originalBoard = cloneBoard(board);
         setTile(board, tileX, tileY, tile);
         generatedBoardOutput.value = boardToString(board);
-        renderBoard(boardElement, board);
+        renderBoard(boardElement, board, originalBoard);
       }
     }
 
