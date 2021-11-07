@@ -39,8 +39,9 @@
     const tiles = new Image();
 
     const tileNames = {
-      "EMPTY": 0,
-      "PLAYER": 4,
+      EMPTY: 0,
+      WALL: 1,
+      PLAYER: 4,
     };
 
     function drawTile(context, tile, x, y, width, height) {
@@ -181,47 +182,45 @@
       renderBoard(boardElement, board);
     }
 
+    function canMoveToLocation(board, x, y) {
+      return (x >= 0) &&
+        (x <= board.width - 1) &&
+        (y >= 0) &&
+        (y <= board.height - 1) &&
+        (getTile(board, x, y) !== tileNames.WALL);
+    }
+
     function movePlayer(board, direction) {
       const playerIndex = board.tiles.findIndex(tile => tile === tileNames.PLAYER);
 
       const playerX = playerIndex % board.width;
       const playerY = Math.floor(playerIndex / board.width);
 
-      const originalBoard = cloneBoard(board);
+      let newX = playerX;
+      let newY = playerY;
 
-      let hasMoved = false;
       switch (direction) {
         case "Up":
-          if (playerY > 0) {
-            setTile(board, playerX, playerY - 1, tileNames.PLAYER);
-            hasMoved = true;
-          }
+          --newY;
           break;
 
         case "Left":
-          if (playerX > 0) {
-            setTile(board, playerX - 1, playerY, tileNames.PLAYER);
-            hasMoved = true;
-          }
+          --newX;
           break;
 
         case "Down":
-          if (playerY < board.height - 1) {
-            setTile(board, playerX, playerY + 1, tileNames.PLAYER);
-            hasMoved = true;
-          }
+          ++newY;
           break;
 
         case "Right":
-          if (playerX < board.width - 1) {
-            setTile(board, playerX + 1, playerY, tileNames.PLAYER);
-            hasMoved = true;
-          }
+          ++newX;
           break;
       }
 
-      if (hasMoved) {
+      if (canMoveToLocation(board, newX, newY)) {
+        const originalBoard = cloneBoard(board);
         setTile(board, playerX, playerY, tileNames.EMPTY);
+        setTile(board, newX, newY, tileNames.PLAYER);
         renderBoard(boardElement, board, originalBoard);
       }
     }
