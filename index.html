@@ -11,8 +11,12 @@
   </head>
   <body>
     <div>
-      <canvas id="board" width="640" height="640"></canvas>
       <div>
+        <button id="build" type="button">Build</button>
+        <button id="play" type="button">Play</button>
+      </div>
+      <canvas id="board" width="640" height="640"></canvas>
+      <div id="builder">
         <div>
           <label for="widthInput">Width</label>
           <input id="widthInput" type="number" min="1" value="10">
@@ -110,6 +114,9 @@
     const heightInput = document.getElementById("heightInput");
     const selectedTileInput = document.getElementById("selectedTile");
     const generatedBoardOutput = document.getElementById("generatedBoard");
+    const buildButton = document.getElementById("build");
+    const playButton = document.getElementById("play");
+    const builderElement = document.getElementById("builder");
 
     let board;
     function recreateBoard() {
@@ -118,21 +125,88 @@
       renderBoard(boardElement, board);
     }
 
+    function handleInput(keyboardEvent) {
+      let handled = true;
+      switch (keyboardEvent.key) {
+        case "Up":
+        case "ArrowUp":
+        case "w":
+          console.log("Up");
+          break;
+
+        case "Left":
+        case "ArrowLeft":
+        case "a":
+          console.log("Left");
+          break;
+
+        case "Down":
+        case "ArrowDown":
+        case "s":
+          console.log("Down");
+          break;
+
+        case "Right":
+        case "ArrowRight":
+        case "d":
+          console.log("Right");
+          break;
+
+        default:
+          handled = false;
+      }
+
+      if (handled) {
+        keyboardEvent.preventDefault(); // Prevent other browser behaviors
+      }
+    }
+
     widthInput.addEventListener("change", recreateBoard);
     heightInput.addEventListener("change", recreateBoard);
 
     let isDragDrawing = false;
+    function enableDragDrawing() {
+      isDragDrawing = true;
+    }
 
-    boardElement.addEventListener("mousedown", () => isDragDrawing = true);
-    document.addEventListener("mouseup", () => isDragDrawing = false);
+    function disableDragDrawing() {
+      isDragDrawing = false;
+    }
 
-    boardElement.addEventListener("mousemove", ev => {
+    function updateDraggedTiles(mouseEvent) {
       if (isDragDrawing) {
-        updateTile(ev);
+        updateTile(mouseEvent);
       }
-    });
-    boardElement.addEventListener("click", updateTile);
+    }
 
+    buildButton.addEventListener("click", () => {
+      buildButton.disabled = true;
+      playButton.disabled = false;
+      builderElement.hidden = false;
+
+      document.removeEventListener("keydown", handleInput);
+
+      boardElement.addEventListener("mousedown", enableDragDrawing);
+      document.addEventListener("mouseup", disableDragDrawing);
+      boardElement.addEventListener("mousemove", updateDraggedTiles);
+      boardElement.addEventListener("click", updateTile);
+    });
+
+    playButton.addEventListener("click", () => {
+      buildButton.disabled = false;
+      playButton.disabled = true;
+      builderElement.hidden = true;
+      playButton.blur(); // Returns focus to the document
+
+      document.addEventListener("keydown", handleInput);
+
+      boardElement.removeEventListener("mousedown", enableDragDrawing);
+      document.removeEventListener("mouseup", disableDragDrawing);
+      boardElement.removeEventListener("mousemove", updateDraggedTiles);
+      boardElement.removeEventListener("click", updateTile);
+    });
+
+    buildButton.click();
     recreateBoard();
   </script>
 </html>
