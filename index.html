@@ -94,8 +94,34 @@
       board.tiles[x + y * board.width] = tile;
     }
 
+    function rle(arr) {
+      let count = 0;
+      let previousValue = undefined;
+      return arr.reduce((encoded, value, index) => {
+        if (index === 0) {
+          previousValue = value;
+        }
+
+        let addition = "";
+
+        if (value !== previousValue) {
+          addition = `.${(count << 3) | previousValue}`;
+          count = 1;
+          previousValue = value;
+        } else {
+          ++count;
+        }
+
+        if (index === arr.length - 1) {
+          addition += `.${(count << 3) | previousValue}`;
+        }
+
+        return encoded + addition;
+      }, "");
+    }
+
     function boardToString(board) {
-      return JSON.stringify(board);
+      return `${board.width}.${board.height}${rle(board.tiles)}`;
     }
 
     function updateTile(mouseEvent) {
