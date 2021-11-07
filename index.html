@@ -3,11 +3,6 @@
   <head>
     <title>Rocks</title>
     <meta charset="utf-8">
-    <style>
-      #board {
-        border: thin solid black;
-      }
-    </style>
   </head>
   <body>
     <div>
@@ -83,11 +78,19 @@
       };
     }
 
+    function validateCoordinate(board, x, y) {
+      if (x < 0 || x >= board.width || y < 0 || y >= board.height) {
+        throw new Error("Coordinate out of bounds");
+      }
+    }
+
     function getTile(board, x, y) {
+      validateCoordinate(board, x, y);
       return board.tiles[x + y * board.width];
     }
 
     function setTile(board, x, y, tile) {
+      validateCoordinate(board, x, y);
       board.tiles[x + y * board.width] = tile;
     }
 
@@ -125,6 +128,8 @@
     function recreateBoard() {
       board = newBoard(widthInput.valueAsNumber, heightInput.valueAsNumber);
       generatedBoardOutput.value = boardToString(board);
+      boardElement.width = board.width * 32;
+      boardElement.height = board.height * 32;
       renderBoard(boardElement, board);
     }
 
