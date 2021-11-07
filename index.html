@@ -38,6 +38,11 @@
   <script type="module">
     const tiles = new Image();
 
+    const tileNames = {
+      "EMPTY": 0,
+      "PLAYER": 4,
+    };
+
     function drawTile(context, tile, x, y, width, height) {
       context.save();
 
@@ -176,31 +181,76 @@
       renderBoard(boardElement, board);
     }
 
+    function movePlayer(board, direction) {
+      const playerIndex = board.tiles.findIndex(tile => tile === tileNames.PLAYER);
+
+      const playerX = playerIndex % board.width;
+      const playerY = Math.floor(playerIndex / board.width);
+
+      const originalBoard = cloneBoard(board);
+
+      let hasMoved = false;
+      switch (direction) {
+        case "Up":
+          if (playerY > 0) {
+            setTile(board, playerX, playerY - 1, tileNames.PLAYER);
+            hasMoved = true;
+          }
+          break;
+
+        case "Left":
+          if (playerX > 0) {
+            setTile(board, playerX - 1, playerY, tileNames.PLAYER);
+            hasMoved = true;
+          }
+          break;
+
+        case "Down":
+          if (playerY < board.height - 1) {
+            setTile(board, playerX, playerY + 1, tileNames.PLAYER);
+            hasMoved = true;
+          }
+          break;
+
+        case "Right":
+          if (playerX < board.width - 1) {
+            setTile(board, playerX + 1, playerY, tileNames.PLAYER);
+            hasMoved = true;
+          }
+          break;
+      }
+
+      if (hasMoved) {
+        setTile(board, playerX, playerY, tileNames.EMPTY);
+        renderBoard(boardElement, board, originalBoard);
+      }
+    }
+
     function handleInput(keyboardEvent) {
       let handled = true;
       switch (keyboardEvent.key) {
         case "Up":
         case "ArrowUp":
         case "w":
-          console.log("Up");
+          movePlayer(board, "Up");
           break;
 
         case "Left":
         case "ArrowLeft":
         case "a":
-          console.log("Left");
+          movePlayer(board, "Left");
           break;
 
         case "Down":
         case "ArrowDown":
         case "s":
-          console.log("Down");
+          movePlayer(board, "Down");
           break;
 
         case "Right":
         case "ArrowRight":
         case "d":
-          console.log("Right");
+          movePlayer(board, "Right");
           break;
 
         default:
