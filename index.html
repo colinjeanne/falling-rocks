@@ -11,6 +11,7 @@
         <button id="play" type="button">Play</button>
       </div>
       <canvas id="board" width="640" height="640"></canvas>
+      <div id="gameState"></div>
       <div id="builder">
         <div>
           <label for="widthInput">Width</label>
@@ -41,6 +42,7 @@
     const tileNames = {
       EMPTY: 0,
       WALL: 1,
+      COLLECTABLE: 2,
       PLAYER: 4,
     };
 
@@ -88,7 +90,7 @@
       return {
         width,
         height,
-        tiles: Array(width * height).fill(0, 0),
+        tiles: Array(width * height).fill(tileNames.EMPTY, 0),
       };
     }
 
@@ -113,6 +115,13 @@
         width: board.width,
         height: board.height,
         tiles: board.tiles.slice(),
+      };
+    }
+
+    function newGameState(board) {
+      return {
+        board: cloneBoard(board),
+        collected: 0,
       };
     }
 
@@ -172,14 +181,21 @@
     const buildButton = document.getElementById("build");
     const playButton = document.getElementById("play");
     const builderElement = document.getElementById("builder");
+    const gameStateElement = document.getElementById("gameState");
 
     let board;
+    let state;
     function recreateBoard() {
       board = newBoard(widthInput.valueAsNumber, heightInput.valueAsNumber);
       generatedBoardOutput.value = boardToString(board);
       boardElement.width = board.width * 32;
       boardElement.height = board.height * 32;
       renderBoard(boardElement, board);
+    }
+
+    function renderGameState(state) {
+      const remaining = state.board.tiles.filter(tile => tile === tileNames.COLLECTABLE).length;
+      gameStateElement.textContent = `${state.collected} collected, ${remaining} remaining`;
     }
 
     function canMoveToLocation(board, x, y) {
@@ -190,11 +206,11 @@
         (getTile(board, x, y) !== tileNames.WALL);
     }
 
-    function movePlayer(board, direction) {
-      const playerIndex = board.tiles.findIndex(tile => tile === tileNames.PLAYER);
+    function movePlayer(state, direction) {
+      const playerIndex = state.board.tiles.findIndex(tile => tile === tileNames.PLAYER);
 
-      const playerX = playerIndex % board.width;
-      const playerY = Math.floor(playerIndex / board.width);
+      const playerX = playerIndex % state.board.width;
+      const playerY = Math.floor(playerIndex / state.board.width);
 
       let newX = playerX;
       let newY = playerY;
@@ -217,11 +233,16 @@
           break;
       }
 
-      if (canMoveToLocation(board, newX, newY)) {
-        const originalBoard = cloneBoard(board);
-        setTile(board, playerX, playerY, tileNames.EMPTY);
-        setTile(board, newX, newY, tileNames.PLAYER);
-        renderBoard(boardElement, board, originalBoard);
+      if (canMoveToLocation(state.board, newX, newY)) {
+        if (getTile(state.board, newX, newY) === tileNames.COLLECTABLE) {
+          ++state.collected;
+        }
+
+        const originalBoard = cloneBoard(state.board);
+        setTile(state.board, playerX, playerY, tileNames.EMPTY);
+        setTile(state.board, newX, newY, tileNames.PLAYER);
+        renderBoard(boardElement, state.board, originalBoard);
+        renderGameState(state);
       }
     }
 
@@ -231,25 +252,25 @@
         case "Up":
         case "ArrowUp":
         case "w":
-          movePlayer(board, "Up");
+          movePlayer(state, "Up");
           break;
 
         case "Left":
         case "ArrowLeft":
         case "a":
-          movePlayer(board, "Left");
+          movePlayer(state, "Left");
           break;
 
         case "Down":
         case "ArrowDown":
         case "s":
-          movePlayer(board, "Down");
+          movePlayer(state, "Down");
           break;
 
         case "Right":
         case "ArrowRight":
         case "d":
-          movePlayer(board, "Right");
+          movePlayer(state, "Right");
           break;
 
         default:
@@ -283,6 +304,7 @@
       buildButton.disabled = true;
       playButton.disabled = false;
       builderElement.hidden = false;
+      gameStateElement.hidden = true;
 
       document.removeEventListener("keydown", handleInput);
 
@@ -290,13 +312,19 @@
       document.addEventListener("mouseup", disableDragDrawing);
       boardElement.addEventListener("mousemove", updateDraggedTiles);
       boardElement.addEventListener("click", updateTile);
+
+      renderBoard(boardElement, board);
     });
 
     playButton.addEventListener("click", () => {
       buildButton.disabled = false;
       playButton.disabled = true;
       builderElement.hidden = true;
+      gameStateElement.hidden = false;
       playButton.blur(); // Returns focus to the document
+
+      state = newGameState(board);
+      renderGameState(state);
 
       document.addEventListener("keydown", handleInput);
 
@@ -304,6 +332,8 @@
       document.removeEventListener("mouseup", disableDragDrawing);
       boardElement.removeEventListener("mousemove", updateDraggedTiles);
       boardElement.removeEventListener("click", updateTile);
+
+      renderBoard(boardElement, board);
     });
 
     tiles.addEventListener("load", () => {
