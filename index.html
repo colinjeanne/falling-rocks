@@ -37,12 +37,14 @@
     </div>
   </body>
   <script type="module">
+    const tileSize = 20;
     const tiles = new Image();
 
     const tileNames = {
       EMPTY: 0,
       WALL: 1,
       COLLECTABLE: 2,
+      ROCK: 3,
       PLAYER: 4,
     };
 
@@ -94,8 +96,12 @@
       };
     }
 
+    function isInBounds(board, x, y) {
+      return x >= 0 && x < board.width && y >= 0 && y < board.height;
+    }
+
     function validateCoordinate(board, x, y) {
-      if (x < 0 || x >= board.width || y < 0 || y >= board.height) {
+      if (!isInBounds(board, x, y)) {
         throw new Error("Coordinate out of bounds");
       }
     }
@@ -188,8 +194,8 @@
     function recreateBoard() {
       board = newBoard(widthInput.valueAsNumber, heightInput.valueAsNumber);
       generatedBoardOutput.value = boardToString(board);
-      boardElement.width = board.width * 32;
-      boardElement.height = board.height * 32;
+      boardElement.width = board.width * tileSize;
+      boardElement.height = board.height * tileSize;
       renderBoard(boardElement, board);
     }
 
@@ -198,22 +204,9 @@
       gameStateElement.textContent = `${state.collected} collected, ${remaining} remaining`;
     }
 
-    function canMoveToLocation(board, x, y) {
-      return (x >= 0) &&
-        (x <= board.width - 1) &&
-        (y >= 0) &&
-        (y <= board.height - 1) &&
-        (getTile(board, x, y) !== tileNames.WALL);
-    }
-
-    function movePlayer(state, direction) {
-      const playerIndex = state.board.tiles.findIndex(tile => tile === tileNames.PLAYER);
-
-      const playerX = playerIndex % state.board.width;
-      const playerY = Math.floor(playerIndex / state.board.width);
-
-      let newX = playerX;
-      let newY = playerY;
+    function nextCoordinateInDirection(x, y, direction) {
+      let newX = x;
+      let newY = y;
 
       switch (direction) {
         case "Up":
@@ -233,14 +226,54 @@
           break;
       }
 
-      if (canMoveToLocation(state.board, newX, newY)) {
-        if (getTile(state.board, newX, newY) === tileNames.COLLECTABLE) {
+      return [newX, newY];
+    }
+
+    function canMoveToLocation(board, x, y, direction) {
+      if (!isInBounds(board, x, y)) {
+        return false;
+      }
+
+      const tile = getTile(board, x, y);
+      if (tile === tileNames.WALL) {
+        return false;
+      } else if (tile === tileNames.ROCK) {
+        const [nextX, nextY] = nextCoordinateInDirection(x, y, direction);
+        if (!isInBounds(board, nextX, nextY)) {
+          return false;
+        }
+
+        const nextTile = getTile(board, nextX, nextY);
+        if (nextTile !== tileNames.EMPTY) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    function movePlayer(state, direction) {
+      const playerIndex = state.board.tiles.findIndex(tile => tile === tileNames.PLAYER);
+
+      const playerX = playerIndex % state.board.width;
+      const playerY = Math.floor(playerIndex / state.board.width);
+      const [newX, newY] = nextCoordinateInDirection(playerX, playerY, direction);
+
+      if (canMoveToLocation(state.board, newX, newY, direction)) {
+        const tile = getTile(state.board, newX, newY);
+        if (tile === tileNames.COLLECTABLE) {
           ++state.collected;
         }
 
         const originalBoard = cloneBoard(state.board);
         setTile(state.board, playerX, playerY, tileNames.EMPTY);
         setTile(state.board, newX, newY, tileNames.PLAYER);
+
+        if (tile === tileNames.ROCK) {
+          const [nextX, nextY] = nextCoordinateInDirection(newX, newY, direction);
+          setTile(state.board, nextX, nextY, tileNames.ROCK);
+        }
+
         renderBoard(boardElement, state.board, originalBoard);
         renderGameState(state);
       }
