@@ -23,11 +23,12 @@
         </div>
         <div>
           <select id="selectedTile">
-            <option value="0" selected>Black</option>
-            <option value="1">Red</option>
-            <option value="2">Green</option>
-            <option value="3">Blue</option>
-            <option value="4">Yellow</option>
+            <option value="0" selected>Empty</option>
+            <option value="1">Wall</option>
+            <option value="2">Collectable</option>
+            <option value="3">Rock</option>
+            <option value="4">Dirt</option>
+            <option value="5">Player</option>
           </select>
         </div>
         <div>
@@ -45,7 +46,8 @@
       WALL: 1,
       COLLECTABLE: 2,
       ROCK: 3,
-      PLAYER: 4,
+      DIRT: 4,
+      PLAYER: 5,
     };
 
     function drawTile(context, tile, x, y, width, height) {
@@ -244,7 +246,7 @@
         }
 
         const nextTile = getTile(board, nextX, nextY);
-        if (nextTile !== tileNames.EMPTY) {
+        if (nextTile !== tileNames.EMPTY && nextTile !== tileNames.DIRT) {
           return false;
         }
       }
