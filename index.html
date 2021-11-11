@@ -38,6 +38,7 @@
     </div>
   </body>
   <script type="module">
+    const tickMs = 250;
     const tileSize = 20;
     const tiles = new Image();
 
@@ -130,6 +131,7 @@
       return {
         board: cloneBoard(board),
         collected: 0,
+        fallingRocks: [],
       };
     }
 
@@ -191,7 +193,7 @@
     const builderElement = document.getElementById("builder");
     const gameStateElement = document.getElementById("gameState");
 
-    let board;
+    let board = newBoard(widthInput.valueAsNumber, heightInput.valueAsNumber);;
     let state;
     function recreateBoard() {
       board = newBoard(widthInput.valueAsNumber, heightInput.valueAsNumber);
@@ -225,6 +227,16 @@
 
         case "Right":
           ++newX;
+          break;
+
+        case "DownLeft":
+          --newX;
+          ++newY;
+          break;
+
+        case "DownRight":
+          ++newX;
+          ++newY;
           break;
       }
 
@@ -267,7 +279,6 @@
           ++state.collected;
         }
 
-        const originalBoard = cloneBoard(state.board);
         setTile(state.board, playerX, playerY, tileNames.EMPTY);
         setTile(state.board, newX, newY, tileNames.PLAYER);
 
@@ -275,13 +286,109 @@
           const [nextX, nextY] = nextCoordinateInDirection(newX, newY, direction);
           setTile(state.board, nextX, nextY, tileNames.ROCK);
         }
-
-        renderBoard(boardElement, state.board, originalBoard);
-        renderGameState(state);
       }
     }
 
+    function canFallDown(state, x, y) {
+      if (y === state.board.height - 1) {
+        return false;
+      }
+
+      const isTileBelowFalling = state.fallingRocks.find(
+        ([tileX, tileY]) => tileX === x && tileY === y + 1
+      );
+
+      const tileBelow = getTile(state.board, x, y + 1);
+      return tileBelow === tileNames.EMPTY || isTileBelowFalling;
+    }
+
+    function canFallLeft(state, x, y) {
+      if (y === state.board.height - 1 || x === 0 || canFallDown(state, x, y)) {
+        return false;
+      }
+
+      const tileBelow = getTile(state.board, x, y + 1);
+      const tileLeft = getTile(state.board, x - 1, y);
+      const tileBelowLeft = getTile(state.board, x - 1, y + 1);
+      return tileBelow === tileNames.ROCK &&
+        tileLeft === tileNames.EMPTY &&
+        tileBelowLeft === tileNames.EMPTY;
+    }
+
+    function canFallRight(state, x, y) {
+      if (
+        y === state.board.height - 1 ||
+        x === state.board.width - 1 ||
+        canFallDown(state, x, y)
+      ) {
+        return false;
+      }
+
+      const tileBelow = getTile(state.board, x, y + 1);
+      const tileRight = getTile(state.board, x + 1, y);
+      const tileBelowRight = getTile(state.board, x + 1, y + 1);
+      return tileBelow === tileNames.ROCK &&
+        tileRight === tileNames.EMPTY &&
+        tileBelowRight === tileNames.EMPTY;
+    }
+
+    function updateFallingRocks(state) {
+      for (let x = 0; x < state.board.width; ++x) {
+        // Skip the last row since rocks on the last row can't fall
+        // Always add the rocks from bottom to top so that a rock falling from
+        // below triggers the rocks above to fall
+        for (let y = state.board.height - 2; y >= 0; --y) {
+          const tile = getTile(state.board, x, y);
+          if (tile === tileNames.ROCK && canFallDown(state, x, y)) {
+            state.fallingRocks.push([x, y, "Down"]);
+          }
+        }
+      }
+    }
+
+    function applyGravityToFallingRocks(state) {
+      const fallingRocks = state.fallingRocks;
+      state.fallingRocks = [];
+
+      // Since state.fallingRocks is ordered bottom to top this loop keeps the
+      // same order
+      for (const [x, y, direction] of fallingRocks) {
+        const [newX, newY, newDirection] = applyGravityToRock(state, x, y, direction);
+        if (newDirection !== "None") {
+          state.fallingRocks.push([newX, newY, newDirection]);
+        }
+      }
+    }
+
+    function applyGravityToRock(state, x, y, direction) {
+      const [newX, newY] = nextCoordinateInDirection(x, y, direction);
+
+      // Prevent this rock from falling if another rock has taken up that space
+      if (getTile(state.board, newX, newY) !== tileNames.EMPTY) {
+        return [x, y, "None"];
+      }
+
+      setTile(state.board, x, y, tileNames.EMPTY);
+      setTile(state.board, newX, newY, tileNames.ROCK);
+
+      if (canFallDown(state, newX, newY)) {
+        return [newX, newY, "Down"];
+      } else if (canFallLeft(state, newX, newY)) {
+        return [newX, newY, "DownLeft"];
+      } else if (canFallRight(state, newX, newY)) {
+        return [newX, newY, "DownRight"];
+      }
+
+      return [newX, newY, "None"];
+    }
+
     function handleInput(keyboardEvent) {
+      if (state.fallingRocks.length > 0) {
+        return;
+      }
+
+      const originalBoard = cloneBoard(state.board);
+
       let handled = true;
       switch (keyboardEvent.key) {
         case "Up":
@@ -313,6 +420,9 @@
       }
 
       if (handled) {
+        updateFallingRocks(state);
+        renderBoard(boardElement, state.board, originalBoard);
+        renderGameState(state);
         keyboardEvent.preventDefault(); // Prevent other browser behaviors
       }
     }
@@ -335,6 +445,7 @@
       }
     }
 
+    let timerId;
     buildButton.addEventListener("click", () => {
       buildButton.disabled = true;
       playButton.disabled = false;
@@ -348,6 +459,8 @@
       boardElement.addEventListener("mousemove", updateDraggedTiles);
       boardElement.addEventListener("click", updateTile);
 
+      clearInterval(timerId);
+
       renderBoard(boardElement, board);
     });
 
@@ -359,6 +472,7 @@
       playButton.blur(); // Returns focus to the document
 
       state = newGameState(board);
+      updateFallingRocks(state);
       renderGameState(state);
 
       document.addEventListener("keydown", handleInput);
@@ -367,6 +481,18 @@
       document.removeEventListener("mouseup", disableDragDrawing);
       boardElement.removeEventListener("mousemove", updateDraggedTiles);
       boardElement.removeEventListener("click", updateTile);
+
+      timerId = setInterval(
+        () => {
+          if (state.fallingRocks.length > 0) {
+            const originalBoard = cloneBoard(state.board);
+            applyGravityToFallingRocks(state);
+            renderBoard(boardElement, state.board, originalBoard);
+            renderGameState(state);
+          }
+        },
+        tickMs
+      );
 
       renderBoard(boardElement, board);
     });
