@@ -49,6 +49,7 @@
       ROCK: 3,
       DIRT: 4,
       PLAYER: 5,
+      DEAD_PLAYER: 6,
     };
 
     function drawTile(context, tile, x, y, width, height) {
@@ -205,7 +206,8 @@
 
     function renderGameState(state) {
       const remaining = state.board.tiles.filter(tile => tile === tileNames.COLLECTABLE).length;
-      gameStateElement.textContent = `${state.collected} collected, ${remaining} remaining`;
+      const isAlive = state.board.tiles.some(tile => tile === tileNames.PLAYER);
+      gameStateElement.textContent = `${state.collected} collected, ${remaining} remaining, ${isAlive ? "alive" : "dead"}`;
     }
 
     function nextCoordinateInDirection(x, y, direction) {
@@ -299,7 +301,9 @@
       );
 
       const tileBelow = getTile(state.board, x, y + 1);
-      return tileBelow === tileNames.EMPTY || isTileBelowFalling;
+      return tileBelow === tileNames.EMPTY ||
+        tileBelow === tileNames.PLAYER ||
+        isTileBelowFalling;
     }
 
     function canFallLeft(state, x, y) {
@@ -312,7 +316,7 @@
       const tileBelowLeft = getTile(state.board, x - 1, y + 1);
       return tileBelow === tileNames.ROCK &&
         tileLeft === tileNames.EMPTY &&
-        tileBelowLeft === tileNames.EMPTY;
+        (tileBelowLeft === tileNames.EMPTY || tileBelowLeft === tileNames.PLAYER);
     }
 
     function canFallRight(state, x, y) {
@@ -329,7 +333,7 @@
       const tileBelowRight = getTile(state.board, x + 1, y + 1);
       return tileBelow === tileNames.ROCK &&
         tileRight === tileNames.EMPTY &&
-        tileBelowRight === tileNames.EMPTY;
+        (tileBelowRight === tileNames.EMPTY || tileBelowRight === tileNames.PLAYER);
     }
 
     function updateFallingRocks(state) {
@@ -339,7 +343,8 @@
         // below triggers the rocks above to fall
         for (let y = state.board.height - 2; y >= 0; --y) {
           const tile = getTile(state.board, x, y);
-          if (tile === tileNames.ROCK && canFallDown(state, x, y)) {
+          const tileBelow = getTile(state.board, x, y + 1);
+          if (tile === tileNames.ROCK && tileBelow !== tileNames.PLAYER && canFallDown(state, x, y)) {
             state.fallingRocks.push([x, y, "Down"]);
           }
         }
@@ -364,7 +369,13 @@
       const [newX, newY] = nextCoordinateInDirection(x, y, direction);
 
       // Prevent this rock from falling if another rock has taken up that space
-      if (getTile(state.board, newX, newY) !== tileNames.EMPTY) {
+      const tile = getTile(state.board, newX, newY);
+      if (tile !== tileNames.EMPTY && tile !== tileNames.PLAYER) {
+        return [x, y, "None"];
+      }
+
+      if (tile === tileNames.PLAYER) {
+        setTile(state.board, newX, newY, tileNames.DEAD_PLAYER);
         return [x, y, "None"];
       }
 
