@@ -15,11 +15,11 @@
       <div id="builder">
         <div>
           <label for="widthInput">Width</label>
-          <input id="widthInput" type="number" min="1" value="10">
+          <input id="widthInput" type="number" min="1" max="64" value="10">
         </div>
         <div>
           <label for="heightInput">Height</label>
-          <input id="heightInput" type="number" min="1" value="10">
+          <input id="heightInput" type="number" min="1" max="64" value="10">
         </div>
         <div>
           <select id="selectedTile">
@@ -33,6 +33,10 @@
         </div>
         <div>
           <output id="generatedBoard"></output>
+        </div>
+        <div>
+          <textarea id="loadedBoard" cols="80"></textarea>
+          <button id="loadBoard" type="button">Load</button>
         </div>
       </div>
     </div>
@@ -136,7 +140,11 @@
       };
     }
 
-    function rle(arr) {
+    const tileBits = 3;
+    const runLengthBits = 7;
+    const maxRunLength = 1 << runLengthBits;
+
+    function encodeRle(arr) {
       let count = 0;
       let previousValue = undefined;
       return arr.reduce((encoded, value, index) => {
@@ -144,10 +152,10 @@
           previousValue = value;
         }
 
-        let addition = "";
+        let addition = [];
 
-        if (value !== previousValue) {
-          addition = `.${(count << 3) | previousValue}`;
+        if (value !== previousValue || count === maxRunLength) {
+          addition.push([count, previousValue]);
           count = 1;
           previousValue = value;
         } else {
@@ -155,15 +163,131 @@
         }
 
         if (index === arr.length - 1) {
-          addition += `.${(count << 3) | previousValue}`;
+          addition.push([count, previousValue]);
         }
 
-        return encoded + addition;
-      }, "");
+        return [...encoded, ...addition];
+      }, []);
     }
 
-    function boardToString(board) {
-      return `${board.width}.${board.height}${rle(board.tiles)}`;
+    function decodeRle(rleEncoded) {
+      return rleEncoded.reduce((arr, rle) => [
+        ...arr,
+        ...Array(rle[0]).fill(rle[1])
+      ], []);
+    }
+
+    const base64Symbols = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    function encodeToBits(value, bitCount) {
+      const bits = [];
+      for (let i = 0; i < bitCount; ++i) {
+        bits.push((value >> (bitCount - i - 1)) & 0x1);
+      }
+
+      return bits;
+    }
+
+    function bitsToBase64Symbol(bits) {
+      const value = bits.reduce(
+        (value, bit, index) => value | (bit << (5 - index)),
+        0
+      );
+      return base64Symbols[value];
+    }
+
+    function base64EncodeBits(bits) {
+      let encoded = "";
+      for (let currentBit = 0; currentBit < bits.length; currentBit += 6) {
+        encoded += bitsToBase64Symbol(bits.slice(currentBit, currentBit + 6));
+      }
+
+      return encoded;
+    }
+
+    function base64EncodeBoard(board) {
+      const bits = [
+        ...encodeToBits(board.width, 6),
+        ...encodeToBits(board.height, 6),
+      ];
+
+      const rleEncodedTiles = encodeRle(board.tiles);
+      for (const [runLength, tile] of rleEncodedTiles) {
+        bits.push(...encodeToBits(runLength, runLengthBits));
+        bits.push(...encodeToBits(tile, tileBits));
+      }
+
+      return base64EncodeBits(bits);
+    }
+
+    function base64SymbolToBits(symbol) {
+      const index = base64Symbols.indexOf(symbol);
+      return [
+        (index >> 5) & 0x1,
+        (index >> 4) & 0x1,
+        (index >> 3) & 0x1,
+        (index >> 2) & 0x1,
+        (index >> 1) & 0x1,
+        index & 0x1,
+      ];
+    }
+
+    function decodeBase64ToBits(encoded) {
+      const bits = [];
+      for (const chr of encoded) {
+        if (!base64Symbols.includes(chr)) {
+          throw new Error("Invalid base 64 string");
+        }
+
+        bits.push(...base64SymbolToBits(chr));
+      }
+
+      return bits;
+    }
+
+    function readBits(bitsArray, start, count) {
+      return bitsArray.slice(start, start + count).reduce((value, bit, index) => {
+        return value | (bit << (count - index - 1));
+      }, 0);
+    }
+
+    function base64DecodeBoard(encoded) {
+      const bits = decodeBase64ToBits(encoded);
+
+      const width = readBits(bits, 0, 6);
+      const height = readBits(bits, 6, 6);
+      if (width === 0 || height === 0) {
+        throw new Error("Invalid board");
+      }
+
+      const rleEncodedTiles = [];
+      let currentBit = 12;
+      while (currentBit + runLengthBits + tileBits < bits.length) {
+        const runLength = readBits(bits, currentBit, runLengthBits);
+        if (runLength === 0) {
+          throw new Error("Invalid board");
+        }
+
+        const tile = readBits(bits, currentBit + runLengthBits, tileBits);
+        if (!Object.values(tileNames).includes(tile)) {
+          throw new Error("Invalid board");
+        }
+
+        rleEncodedTiles.push([runLength, tile]);
+
+        currentBit += (runLengthBits + tileBits);
+      }
+
+      const tiles = decodeRle(rleEncodedTiles);
+      if (tiles.length !== width * height) {
+        throw new Error("Invalid board");
+      }
+
+      return {
+        width,
+        height,
+        tiles,
+      };
     }
 
     function updateTile(mouseEvent) {
@@ -179,7 +303,7 @@
       if (tile !== originalTile) {
         const originalBoard = cloneBoard(board);
         setTile(board, tileX, tileY, tile);
-        generatedBoardOutput.value = boardToString(board);
+        generatedBoardOutput.value = base64EncodeBoard(board);
         renderBoard(boardElement, board, originalBoard);
       }
     }
@@ -193,15 +317,22 @@
     const playButton = document.getElementById("play");
     const builderElement = document.getElementById("builder");
     const gameStateElement = document.getElementById("gameState");
+    const loadedBoard = document.getElementById("loadedBoard");
+    const loadBoard = document.getElementById("loadBoard");
 
-    let board = newBoard(widthInput.valueAsNumber, heightInput.valueAsNumber);;
+    let board;
     let state;
-    function recreateBoard() {
-      board = newBoard(widthInput.valueAsNumber, heightInput.valueAsNumber);
-      generatedBoardOutput.value = boardToString(board);
+
+    function updateUIWithBoard(board) {
+      generatedBoardOutput.value = base64EncodeBoard(board);
       boardElement.width = board.width * tileSize;
       boardElement.height = board.height * tileSize;
       renderBoard(boardElement, board);
+    }
+
+    function recreateBoard() {
+      board = newBoard(widthInput.valueAsNumber, heightInput.valueAsNumber);
+      updateUIWithBoard(board);
     }
 
     function renderGameState(state) {
@@ -507,6 +638,18 @@
 
       renderBoard(boardElement, board);
     });
+
+    loadBoard.addEventListener("click", () => {
+      const encoded = loadedBoard.value.trim();
+      try {
+        board = base64DecodeBoard(loadedBoard.value.trim());
+        updateUIWithBoard(board)
+      } catch (e) {
+        console.log(e);
+      }
+    });
+
+    recreateBoard();
 
     tiles.addEventListener("load", () => {
       buildButton.click();
