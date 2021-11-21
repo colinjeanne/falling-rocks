@@ -384,7 +384,7 @@
       }
 
       const tile = getTile(board, x, y);
-      if (tile === tileNames.WALL || tile === tileNames.DEAD_PLAYER) {
+      if (tile === tileNames.WALL || tile === tileNames.DEAD_PLAYER || tile === tileNames.PLAYER) {
         return false;
       } else if (tile === tileNames.ROCK) {
         const [nextX, nextY] = nextCoordinateInDirection(x, y, direction);
@@ -402,24 +402,42 @@
     }
 
     function movePlayer(state, direction) {
-      const playerIndex = state.board.tiles.findIndex(tile => tile === tileNames.PLAYER);
+      const playerPositions = state.board.tiles.
+        map((tile, index) => ({ tile, index })).
+        filter(({tile, index}) => tile === tileNames.PLAYER).
+        map(({index}) => ({
+          x: index % state.board.width,
+          y: Math.floor(index / state.board.width),
+        }));
 
-      const playerX = playerIndex % state.board.width;
-      const playerY = Math.floor(playerIndex / state.board.width);
-      const [newX, newY] = nextCoordinateInDirection(playerX, playerY, direction);
-
-      if (canMoveToLocation(state.board, newX, newY, direction)) {
-        const tile = getTile(state.board, newX, newY);
-        if (tile === tileNames.COLLECTABLE) {
-          ++state.collected;
+      playerPositions.sort((a, b) => {
+        if (direction === "Up") {
+          return a.y - b.y;
+        } else if (direction === "Left") {
+          return a.x - b.x;
+        } else if (direction === "Down") {
+          return b.y - a.y;
         }
 
-        setTile(state.board, playerX, playerY, tileNames.EMPTY);
-        setTile(state.board, newX, newY, tileNames.PLAYER);
+        return b.x - a.x;
+      });
 
-        if (tile === tileNames.ROCK) {
-          const [nextX, nextY] = nextCoordinateInDirection(newX, newY, direction);
-          setTile(state.board, nextX, nextY, tileNames.ROCK);
+      for (const {x, y} of playerPositions) {
+        const [newX, newY] = nextCoordinateInDirection(x, y, direction);
+
+        if (canMoveToLocation(state.board, newX, newY, direction)) {
+          const tile = getTile(state.board, newX, newY);
+          if (tile === tileNames.COLLECTABLE) {
+            ++state.collected;
+          }
+
+          setTile(state.board, x, y, tileNames.EMPTY);
+          setTile(state.board, newX, newY, tileNames.PLAYER);
+
+          if (tile === tileNames.ROCK) {
+            const [nextX, nextY] = nextCoordinateInDirection(newX, newY, direction);
+            setTile(state.board, nextX, nextY, tileNames.ROCK);
+          }
         }
       }
     }
