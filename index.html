@@ -327,6 +327,8 @@
       generatedBoardOutput.value = base64EncodeBoard(board);
       boardElement.width = board.width * tileSize;
       boardElement.height = board.height * tileSize;
+      widthInput.value = board.width;
+      heightInput.value = board.height;
       renderBoard(boardElement, board);
     }
 
@@ -382,7 +384,7 @@
       }
 
       const tile = getTile(board, x, y);
-      if (tile === tileNames.WALL) {
+      if (tile === tileNames.WALL || tile === tileNames.DEAD_PLAYER) {
         return false;
       } else if (tile === tileNames.ROCK) {
         const [nextX, nextY] = nextCoordinateInDirection(x, y, direction);
@@ -643,7 +645,7 @@
       const encoded = loadedBoard.value.trim();
       try {
         board = base64DecodeBoard(loadedBoard.value.trim());
-        updateUIWithBoard(board)
+        updateUIWithBoard(board);
       } catch (e) {
         console.log(e);
       }
