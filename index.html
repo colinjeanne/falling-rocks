@@ -42,21 +42,11 @@
     </div>
   </body>
   <script type="module">
-    import * as Encoding from "./src/helpers/encoding.js";
+    import { Board, base64EncodeBoard, base64DecodeBoard, tileNames } from "./src/board.js";
 
     const tickMs = 250;
     const tileSize = 20;
     const tiles = new Image();
-
-    const tileNames = {
-      EMPTY: 0,
-      WALL: 1,
-      COLLECTABLE: 2,
-      ROCK: 3,
-      DIRT: 4,
-      PLAYER: 5,
-      DEAD_PLAYER: 6,
-    };
 
     function drawTile(context, tile, x, y, width, height) {
       context.save();
@@ -98,105 +88,11 @@
       });
     }
 
-    function newBoard(width, height) {
-      return {
-        width,
-        height,
-        tiles: Array(width * height).fill(tileNames.EMPTY, 0),
-      };
-    }
-
-    function isInBounds(board, x, y) {
-      return x >= 0 && x < board.width && y >= 0 && y < board.height;
-    }
-
-    function validateCoordinate(board, x, y) {
-      if (!isInBounds(board, x, y)) {
-        throw new Error("Coordinate out of bounds");
-      }
-    }
-
-    function getTile(board, x, y) {
-      validateCoordinate(board, x, y);
-      return board.tiles[x + y * board.width];
-    }
-
-    function setTile(board, x, y, tile) {
-      validateCoordinate(board, x, y);
-      board.tiles[x + y * board.width] = tile;
-    }
-
-    function cloneBoard(board) {
-      return {
-        width: board.width,
-        height: board.height,
-        tiles: board.tiles.slice(),
-      };
-    }
-
     function newGameState(board) {
       return {
-        board: cloneBoard(board),
+        board: board.clone(),
         collected: 0,
         fallingRocks: [],
-      };
-    }
-
-    const tileBits = 3;
-    const runLengthBits = 7;
-    const maxRunLength = 1 << runLengthBits;
-
-    function base64EncodeBoard(board) {
-      const bits = [
-        ...Encoding.encodeToBits(board.width, 6),
-        ...Encoding.encodeToBits(board.height, 6),
-      ];
-
-      const rleEncodedTiles = Encoding.encodeRle(board.tiles, maxRunLength);
-      for (const [runLength, tile] of rleEncodedTiles) {
-        bits.push(...Encoding.encodeToBits(runLength, runLengthBits));
-        bits.push(...Encoding.encodeToBits(tile, tileBits));
-      }
-
-      return Encoding.base64EncodeBits(bits);
-    }
-
-    function base64DecodeBoard(encoded) {
-      const bits = Encoding.decodeBase64ToBits(encoded);
-
-      const width = Encoding.readBits(bits, 0, 6);
-      const height = Encoding.readBits(bits, 6, 6);
-      if (width === 0 || height === 0) {
-        throw new Error("Invalid board");
-      }
-
-      const rleEncodedTiles = [];
-      let currentBit = 12;
-      while (currentBit + runLengthBits + tileBits <= bits.length) {
-        const runLength = Encoding.readBits(bits, currentBit, runLengthBits);
-        if (runLength === 0) {
-          throw new Error("Invalid board");
-        }
-
-        const tile = Encoding.readBits(bits, currentBit + runLengthBits, tileBits);
-        if (!Object.values(tileNames).includes(tile)) {
-          throw new Error("Invalid board");
-        }
-
-        rleEncodedTiles.push([runLength, tile]);
-
-        currentBit += (runLengthBits + tileBits);
-      }
-
-      const tiles = Encoding.decodeRle(rleEncodedTiles);
-      if (tiles.length !== width * height) {
-        throw new Error("Invalid board");
-      }
-
-      return {
-        width,
-        height,
-        tiles,
       };
     }
 
@@ -208,11 +104,11 @@
       const tileY = Math.floor(mouseEvent.offsetY / tileHeight);
 
       const tile = parseInt(selectedTileInput.selectedOptions[0].value);
-      const originalTile = getTile(board, tileX, tileY);
+      const originalTile = board.getTile(tileX, tileY);
 
       if (tile !== originalTile) {
-        const originalBoard = cloneBoard(board);
-        setTile(board, tileX, tileY, tile);
+        const originalBoard = board.clone();
+        board.setTile(tileX, tileY, tile);
         generatedBoardOutput.value = base64EncodeBoard(board);
         renderBoard(boardElement, board, originalBoard);
       }
@@ -243,7 +139,7 @@
     }
 
     function recreateBoard() {
-      board = newBoard(widthInput.valueAsNumber, heightInput.valueAsNumber);
+      board = new Board(widthInput.valueAsNumber, heightInput.valueAsNumber);
       updateUIWithBoard(board);
     }
 
@@ -289,20 +185,20 @@
     }
 
     function canMoveToLocation(board, x, y, direction) {
-      if (!isInBounds(board, x, y)) {
+      if (!board.isInBounds(x, y)) {
         return false;
       }
 
-      const tile = getTile(board, x, y);
+      const tile = board.getTile(x, y);
       if (tile === tileNames.WALL || tile === tileNames.DEAD_PLAYER || tile === tileNames.PLAYER) {
         return false;
       } else if (tile === tileNames.ROCK) {
         const [nextX, nextY] = nextCoordinateInDirection(x, y, direction);
-        if (!isInBounds(board, nextX, nextY)) {
+        if (!board.isInBounds(nextX, nextY)) {
           return false;
         }
 
-        const nextTile = getTile(board, nextX, nextY);
+        const nextTile = board.getTile(nextX, nextY);
         if (nextTile !== tileNames.EMPTY && nextTile !== tileNames.DIRT) {
           return false;
         }
@@ -336,24 +232,24 @@
         const [newX, newY] = nextCoordinateInDirection(x, y, direction);
 
         if (canMoveToLocation(state.board, newX, newY, direction)) {
-          const tile = getTile(state.board, newX, newY);
+          const tile = state.board.getTile(newX, newY);
           if (tile === tileNames.COLLECTABLE) {
             ++state.collected;
           }
 
-          setTile(state.board, x, y, tileNames.EMPTY);
-          setTile(state.board, newX, newY, tileNames.PLAYER);
+          state.board.setTile(x, y, tileNames.EMPTY);
+          state.board.setTile(newX, newY, tileNames.PLAYER);
 
           if (tile === tileNames.ROCK) {
             const [nextX, nextY] = nextCoordinateInDirection(newX, newY, direction);
-            setTile(state.board, nextX, nextY, tileNames.ROCK);
+            state.board.setTile(nextX, nextY, tileNames.ROCK);
           }
         }
       }
     }
 
     function canFallDown(state, x, y) {
-      if (y === state.board.height - 1) {
+      if (!state.board.isInBounds(x, y + 1)) {
         return false;
       }
 
@@ -361,37 +257,33 @@
         ([tileX, tileY]) => tileX === x && tileY === y + 1
       );
 
-      const tileBelow = getTile(state.board, x, y + 1);
+      const tileBelow = state.board.getTile(x, y + 1);
       return tileBelow === tileNames.EMPTY ||
         tileBelow === tileNames.PLAYER ||
         isTileBelowFalling;
     }
 
     function canFallLeft(state, x, y) {
-      if (y === state.board.height - 1 || x === 0 || canFallDown(state, x, y)) {
+      if (!state.board.isInBounds(x - 1, y + 1) || canFallDown(state, x, y)) {
         return false;
       }
 
-      const tileBelow = getTile(state.board, x, y + 1);
-      const tileLeft = getTile(state.board, x - 1, y);
-      const tileBelowLeft = getTile(state.board, x - 1, y + 1);
+      const tileBelow = state.board.getTile(x, y + 1);
+      const tileLeft = state.board.getTile(x - 1, y);
+      const tileBelowLeft = state.board.getTile(x - 1, y + 1);
       return tileBelow === tileNames.ROCK &&
         tileLeft === tileNames.EMPTY &&
         (tileBelowLeft === tileNames.EMPTY || tileBelowLeft === tileNames.PLAYER);
     }
 
     function canFallRight(state, x, y) {
-      if (
-        y === state.board.height - 1 ||
-        x === state.board.width - 1 ||
-        canFallDown(state, x, y)
-      ) {
+      if (!state.board.isInBounds(x + 1, y + 1) || canFallDown(state, x, y)) {
         return false;
       }
 
-      const tileBelow = getTile(state.board, x, y + 1);
-      const tileRight = getTile(state.board, x + 1, y);
-      const tileBelowRight = getTile(state.board, x + 1, y + 1);
+      const tileBelow = state.board.getTile(x, y + 1);
+      const tileRight = state.board.getTile(x + 1, y);
+      const tileBelowRight = state.board.getTile(x + 1, y + 1);
       return tileBelow === tileNames.ROCK &&
         tileRight === tileNames.EMPTY &&
         (tileBelowRight === tileNames.EMPTY || tileBelowRight === tileNames.PLAYER);
@@ -403,8 +295,8 @@
         // Always add the rocks from bottom to top so that a rock falling from
         // below triggers the rocks above to fall
         for (let y = state.board.height - 2; y >= 0; --y) {
-          const tile = getTile(state.board, x, y);
-          const tileBelow = getTile(state.board, x, y + 1);
+          const tile = state.board.getTile(x, y);
+          const tileBelow = state.board.getTile(x, y + 1);
           if (tile === tileNames.ROCK && tileBelow !== tileNames.PLAYER && canFallDown(state, x, y)) {
             state.fallingRocks.push([x, y, "Down"]);
           }
@@ -430,18 +322,18 @@
       const [newX, newY] = nextCoordinateInDirection(x, y, direction);
 
       // Prevent this rock from falling if another rock has taken up that space
-      const tile = getTile(state.board, newX, newY);
+      const tile = state.board.getTile(newX, newY);
       if (tile !== tileNames.EMPTY && tile !== tileNames.PLAYER) {
         return [x, y, "None"];
       }
 
       if (tile === tileNames.PLAYER) {
-        setTile(state.board, newX, newY, tileNames.DEAD_PLAYER);
+        state.board.setTile(newX, newY, tileNames.DEAD_PLAYER);
         return [x, y, "None"];
       }
 
-      setTile(state.board, x, y, tileNames.EMPTY);
-      setTile(state.board, newX, newY, tileNames.ROCK);
+      state.board.setTile(x, y, tileNames.EMPTY);
+      state.board.setTile(newX, newY, tileNames.ROCK);
 
       if (canFallDown(state, newX, newY)) {
         return [newX, newY, "Down"];
@@ -459,7 +351,7 @@
         return;
       }
 
-      const originalBoard = cloneBoard(state.board);
+      const originalBoard = state.board.clone();
 
       let handled = true;
       switch (keyboardEvent.key) {
@@ -557,7 +449,7 @@
       timerId = setInterval(
         () => {
           if (state.fallingRocks.length > 0) {
-            const originalBoard = cloneBoard(state.board);
+            const originalBoard = state.board.clone();
             applyGravityToFallingRocks(state);
             renderBoard(boardElement, state.board, originalBoard);
             renderGameState(state);

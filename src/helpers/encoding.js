@@ -59,7 +59,7 @@ const base64Symbols = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234
  * @param {number} bitIndex
  */
 function getBit(num, bitIndex) {
-  if (num >> bitIndex) {
+  if ((num >> bitIndex) & 0x1) {
     return 1;
   }
 
