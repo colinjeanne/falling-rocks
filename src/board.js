@@ -66,7 +66,7 @@ export class Board {
    *
    * @param {number} x
    * @param {number} y
-   * @param {tileNames[]} tile
+   * @param {tileNames} tile
    */
   setTile(x, y, tile) {
     this.#validateCoordinate(x, y);
@@ -116,6 +116,7 @@ export function base64DecodeBoard(encoded) {
     throw new Error("Invalid board");
   }
 
+  /** @type {[number, number][]} */
   const rleEncodedTiles = [];
   let currentBit = 12;
   while (currentBit + runLengthBits + tileBits <= bits.length) {
