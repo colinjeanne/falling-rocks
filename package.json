@@ -2,18 +2,28 @@
   "name": "falling-rocks",
   "version": "1.0.0",
   "description": "",
+  "homepage": "https://github.com/colinjeanne/falling-rocks",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha"
   },
   "author": "colinjeanne@hotmail.com <Colin Jeanne>",
   "license": "MIT",
-  "private": true,
-  "dependencies": {
-    "node-static": "^0.7.11"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/colinjeanne/falling-rocks.git"
   },
+  "bugs": {
+    "url": "https://github.com/colinjeanne/falling-rocks/issues"
+  },
+  "private": true,
   "devDependencies": {
-    "@types/node-static": "^0.7.7"
+    "@types/chai": "^4.3.4",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^18.15.10",
+    "chai": "^4.3.7",
+    "mocha": "^10.2.0"
   }
 }

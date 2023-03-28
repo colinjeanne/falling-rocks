@@ -24,6 +24,9 @@ export class Board {
     /** @type {number} */
     this.height = height;
 
+    /** @type {number[]} */
+    this.tiles = []
+
     if (tiles) {
       if (tiles.length !== width * height) {
         throw new Error("Invalid board");

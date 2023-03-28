@@ -2,7 +2,15 @@ import { tileNames } from "./board.js";
 
 /**
  * @typedef {import("./board.js").Board} Board
- * @typedef {"Up" | "Left" | "Down" | "Right" | "DownLeft" | "DownRight" | "None"} Direction
+ * @typedef {(
+ *  "Up" |
+ *  "Left" |
+ *  "Down" |
+ *  "Right" |
+ *  "DownLeft" |
+ *  "DownRight" |
+ *  "None"
+ * )} Direction
  * @typedef {[number, number]} Point
  */
 
@@ -17,8 +25,58 @@ export class State {
     /** @type {number} */
     this.collected = 0;
 
-    /** @type {[number, number, Direction][]} */
+    /** @type {[number, number, Direction][][]} */
     this.fallingRocks = [];
+  }
+
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @returns {Direction}
+  */
+  getFallingDirection(x, y) {
+    const tile = this.board.getTile(x, y);
+    if (tile !== tileNames.ROCK) {
+      return "None";
+    }
+
+    for (const line of this.fallingRocks) {
+      const fallingRock = line.find(
+        ([tileX, tileY]) => tileX === x && tileY === y
+      );
+
+      if (fallingRock) {
+        return fallingRock[2];
+      }
+    }
+
+    return "None";
+  }
+
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {Direction} direction
+   */
+  setFallingRock(x, y, direction) {
+    /** @type [number, number, Direction] */
+    const fallingRock = [x, y, direction];
+    for (let index = 0; index < this.fallingRocks.length; ++index) {
+      const line = this.fallingRocks[index];
+      if (line.length > 0) {
+        if (line[0][1] === y) {
+          line.push(fallingRock);
+          return;
+        } else if (line[0][1] < y) {
+          const newLine = [fallingRock];
+          this.fallingRocks.splice(index, 0, newLine);
+          return;
+        }
+      }
+    }
+
+    const newLine = [fallingRock];
+    this.fallingRocks.push(newLine);
   }
 }
 
@@ -79,7 +137,11 @@ function canMoveToLocation(board, x, y, direction) {
   }
 
   const tile = board.getTile(x, y);
-  if (tile === tileNames.WALL || tile === tileNames.DEAD_PLAYER || tile === tileNames.PLAYER) {
+  if (
+    tile === tileNames.WALL ||
+    tile === tileNames.DEAD_PLAYER ||
+    tile === tileNames.PLAYER
+  ) {
     return false;
   } else if (tile === tileNames.ROCK) {
     const [nextX, nextY] = nextCoordinateInDirection(x, y, direction);
@@ -136,11 +198,24 @@ export function movePlayer(state, direction) {
       state.board.setTile(newX, newY, tileNames.PLAYER);
 
       if (tile === tileNames.ROCK) {
-        const [nextX, nextY] = nextCoordinateInDirection(newX, newY, direction);
+        const [nextX, nextY] = nextCoordinateInDirection(
+          newX,
+          newY,
+          direction
+        );
         state.board.setTile(nextX, nextY, tileNames.ROCK);
       }
     }
   }
+}
+
+/**
+ * @param {State} state
+ * @param {number} x
+ * @param {number} y
+ */
+function isTileFallingRock(state, x, y) {
+  return state.getFallingDirection(x, y) !== "None";
 }
 
 /**
@@ -155,14 +230,10 @@ function canFallDown(state, x, y) {
     return false;
   }
 
-  const isTileBelowFalling = state.fallingRocks.find(
-    ([tileX, tileY]) => tileX === x && tileY === y + 1
-  );
-
   const tileBelow = state.board.getTile(x, y + 1);
   return tileBelow === tileNames.EMPTY ||
     tileBelow === tileNames.PLAYER ||
-    isTileBelowFalling;
+    isTileFallingRock(state, x, y + 1);
 }
 
 /**
@@ -181,8 +252,12 @@ function canFallLeft(state, x, y) {
   const tileLeft = state.board.getTile(x - 1, y);
   const tileBelowLeft = state.board.getTile(x - 1, y + 1);
   return tileBelow === tileNames.ROCK &&
-    tileLeft === tileNames.EMPTY &&
-    (tileBelowLeft === tileNames.EMPTY || tileBelowLeft === tileNames.PLAYER);
+    (tileLeft === tileNames.EMPTY || isTileFallingRock(state, x - 1, y)) &&
+    (
+      tileBelowLeft === tileNames.EMPTY ||
+      isTileFallingRock(state, x - 1, y + 1) ||
+      tileBelowLeft === tileNames.PLAYER
+    );
 }
 
 /**
@@ -201,8 +276,12 @@ function canFallRight(state, x, y) {
   const tileRight = state.board.getTile(x + 1, y);
   const tileBelowRight = state.board.getTile(x + 1, y + 1);
   return tileBelow === tileNames.ROCK &&
-    tileRight === tileNames.EMPTY &&
-    (tileBelowRight === tileNames.EMPTY || tileBelowRight === tileNames.PLAYER);
+    (tileRight === tileNames.EMPTY || isTileFallingRock(state, x + 1, y)) &&
+    (
+      tileBelowRight === tileNames.EMPTY ||
+      isTileFallingRock(state, x + 1, y + 1) ||
+      tileBelowRight === tileNames.PLAYER
+    );
 }
 
 /**
@@ -211,16 +290,29 @@ function canFallRight(state, x, y) {
  * @param {State} state
  */
 export function updateFallingRocks(state) {
-  for (let x = 0; x < state.board.width; ++x) {
-    // Skip the last row since rocks on the last row can't fall
-    // Always add the rocks from bottom to top so that a rock falling from
-    // below triggers the rocks above to fall
-    for (let y = state.board.height - 2; y >= 0; --y) {
+  if (state.fallingRocks.length > 0) {
+    return;
+  }
+
+  // Skip the last row since rocks on the last row can't fall
+  for (let y = state.board.height - 2; y >= 0; --y) {
+    /** @type [number, number, Direction][] */
+    const line = [];
+    for (let x = state.board.width - 1; x >= 0; --x) {
       const tile = state.board.getTile(x, y);
       const tileBelow = state.board.getTile(x, y + 1);
-      if (tile === tileNames.ROCK && tileBelow !== tileNames.PLAYER && canFallDown(state, x, y)) {
-        state.fallingRocks.push([x, y, "Down"]);
+      if (
+        tile === tileNames.ROCK &&
+        tileBelow !== tileNames.PLAYER &&
+        canFallDown(state, x, y) &&
+        state.getFallingDirection(x, y) === "None"
+      ) {
+        line.push([x, y, "Down"]);
       }
+    }
+
+    if (line.length > 0) {
+      state.fallingRocks.push(line);
     }
   }
 }
@@ -229,35 +321,29 @@ export function updateFallingRocks(state) {
  * @param {State} state
  * @param {number} x
  * @param {number} y
- * @param {Direction} direction
- * @returns {[number, number, Direction]}
+ * @returns {[number, number, boolean]}
  */
-function applyGravityToRock(state, x, y, direction) {
-  const [newX, newY] = nextCoordinateInDirection(x, y, direction);
-
-  // Prevent this rock from falling if another rock has taken up that space
-  const tile = state.board.getTile(newX, newY);
-  if (tile !== tileNames.EMPTY && tile !== tileNames.PLAYER) {
-    return [x, y, "None"];
+function applyGravityToTile(state, x, y) {
+  const direction = state.getFallingDirection(x, y);
+  if (direction === "None") {
+    return [x, y, false];
   }
 
-  if (tile === tileNames.PLAYER) {
-    state.board.setTile(newX, newY, tileNames.DEAD_PLAYER);
-    return [x, y, "None"];
+  const [newX, newY] = nextCoordinateInDirection(x, y, direction);
+
+  const tile = state.board.getTile(newX, newY);
+  if (tile !== tileNames.EMPTY) {
+    if (tile === tileNames.PLAYER) {
+      state.board.setTile(newX, newY, tileNames.DEAD_PLAYER);
+    }
+
+    return [x, y, true];
   }
 
   state.board.setTile(x, y, tileNames.EMPTY);
   state.board.setTile(newX, newY, tileNames.ROCK);
 
-  if (canFallDown(state, newX, newY)) {
-    return [newX, newY, "Down"];
-  } else if (canFallLeft(state, newX, newY)) {
-    return [newX, newY, "DownLeft"];
-  } else if (canFallRight(state, newX, newY)) {
-    return [newX, newY, "DownRight"];
-  }
-
-  return [newX, newY, "None"];
+  return [newX, newY, true];
 }
 
 /**
@@ -266,15 +352,50 @@ function applyGravityToRock(state, x, y, direction) {
  * @param {State} state
  */
 export function applyGravityToFallingRocks(state) {
-  const fallingRocks = state.fallingRocks;
-  state.fallingRocks = [];
+  /** @type {[number, number][][]} */
+  const fallingRocks = [];
+  for (const line of state.fallingRocks) {
+    /** @type [number, number][] */
+    const newLine = [];
+    for (const [x, y, direction] of line) {
+      if (direction === "Down") {
+        const updatedTile = applyGravityToTile(state, x, y);
+        if (updatedTile[2]) {
+          newLine.push([updatedTile[0], updatedTile[1]]);
+        }
+      }
+    }
 
-  // Since state.fallingRocks is ordered bottom to top this loop keeps the
-  // same order
-  for (const [x, y, direction] of fallingRocks) {
-    const [newX, newY, newDirection] = applyGravityToRock(state, x, y, direction);
-    if (newDirection !== "None") {
-      state.fallingRocks.push([newX, newY, newDirection]);
+    for (const [x, y, direction] of line) {
+      if (direction !== "Down") {
+        const updatedTile = applyGravityToTile(state, x, y);
+        if (updatedTile[2]) {
+          newLine.push([updatedTile[0], updatedTile[1]]);
+        }
+      }
+    }
+
+    fallingRocks.push(newLine);
+  }
+
+  state.fallingRocks = [];
+  for (const line of fallingRocks) {
+    /** @type {[number, number][]} */
+    const unprocessed = [];
+    for (const [x, y] of line) {
+      if (canFallDown(state, x, y)) {
+        state.setFallingRock(x, y, "Down");
+      } else {
+        unprocessed.push([x, y]);
+      }
+    }
+
+    for (const [x, y] of unprocessed) {
+      if (canFallLeft(state, x, y)) {
+        state.setFallingRock(x, y, "DownLeft");
+      } else if (canFallRight(state, x, y)) {
+        state.setFallingRock(x, y, "DownRight");
+      }
     }
   }
 }
