@@ -43,7 +43,7 @@
   </body>
   <script type="module">
     import { Board, base64EncodeBoard, base64DecodeBoard, tileNames } from "./src/board.js";
-    import { State, applyGravityToFallingRocks, movePlayer, updateFallingRocks } from "./state.js";
+    import { State, applyGravityToFallingRocks, movePlayer, updateFallingRocks } from "./src/state.js";
 
     const tickMs = 250;
     const tileSize = 20;
@@ -181,6 +181,7 @@
 
       if (handled) {
         updateFallingRocks(state);
+        applyGravityToFallingRocks(state);
         renderBoard(boardElement, state.board, originalBoard);
         renderGameState(state);
         keyboardEvent.preventDefault(); // Prevent other browser behaviors
@@ -231,7 +232,7 @@
       gameStateElement.hidden = false;
       playButton.blur(); // Returns focus to the document
 
-      state = new State(board);
+      state = new State(board.clone());
       updateFallingRocks(state);
       renderGameState(state);
 
