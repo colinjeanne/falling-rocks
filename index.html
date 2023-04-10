@@ -23,12 +23,12 @@
         </div>
         <div>
           <select id="selectedTile">
-            <option value="0" selected>Empty</option>
-            <option value="1">Wall</option>
-            <option value="2">Collectable</option>
-            <option value="3">Rock</option>
-            <option value="4">Dirt</option>
-            <option value="5">Player</option>
+            <option value="Empty" selected>Empty</option>
+            <option value="Wall">Wall</option>
+            <option value="Collectable">Collectable</option>
+            <option value="Rock">Rock</option>
+            <option value="Dirt">Dirt</option>
+            <option value="Player">Player</option>
           </select>
         </div>
         <div>
@@ -42,8 +42,8 @@
     </div>
   </body>
   <script type="module">
-    import { Board, base64EncodeBoard, base64DecodeBoard, tileNames } from "./src/board.js";
-    import { State, applyGravityToFallingRocks, movePlayer, updateFallingRocks } from "./src/state.js";
+    import { Board, base64EncodeBoard, base64DecodeBoard } from "./src/board.js";
+    import { State, applyTileUpdates, movePlayer } from "./src/state.js";
 
     const tickMs = 250;
     const tileSize = 20;
@@ -52,10 +52,29 @@
     function drawTile(context, tile, x, y, width, height) {
       context.save();
 
+      let tileIndex;
+      if (tile.type === "Empty") {
+        tileIndex = 0;
+      } else if (tile.type === "Wall") {
+        tileIndex = 1;
+      } else if (tile.type === "Collectable") {
+        tileIndex = 2;
+      } else if (tile.type === "Rock") {
+        tileIndex = 3;
+      } else if (tile.type === "Dirt") {
+        tileIndex = 4;
+      } else if (tile.type === "Player" && tile.isAlive) {
+        tileIndex = 5;
+      } else if (tile.type === "Player" && !tile.isAlive) {
+        tileIndex = 6;
+      } else {
+        throw new Error("Unknown tile");
+      }
+
       context.drawImage(
         tiles,
         0,
-        tiles.naturalWidth * tile,
+        tiles.naturalWidth * tileIndex,
         tiles.naturalWidth,
         tiles.naturalWidth,
         x,
@@ -67,26 +86,49 @@
       context.restore();
     }
 
-    function renderBoard(canvas, board, originalBoard) {
+    function renderBoard(canvas, board, updatedPoints) {
       const context = canvas.getContext("2d");
 
       const tileWidth = canvas.width / board.width;
       const tileHeight = canvas.height / board.height;
 
-      const areBoardsCompatible =
-        board.width === originalBoard?.width &&
-        board.height === originalBoard?.height;
-
-      board.tiles.forEach((tile, index) => {
-        if (areBoardsCompatible && tile === originalBoard.tiles[index]) {
-          return;
+      if (updatedPoints === undefined) {
+        updatedPoints = [];
+        for (let x = 0; x < board.width; ++x) {
+          for (let y = 0; y < board.height; ++y) {
+            updatedPoints.push([x, y]);
+          }
         }
+      }
 
-        const tileX = index % board.width;
-        const tileY = Math.floor(index / board.width);
+      const pointsWithTiles = updatedPoints.map(([x, y]) => ({
+        x,
+        y,
+        tile: board.getTile(x, y),
+      }));
 
-        drawTile(context, tile, tileX * tileWidth, tileY * tileHeight, tileWidth, tileHeight);
+      pointsWithTiles.forEach(({x, y, tile}) => {
+        drawTile(context, tile, x * tileWidth, y * tileHeight, tileWidth, tileHeight);
       });
+    }
+
+    function createTile(type) {
+      switch (type) {
+        case "Empty":
+        case "Wall":
+        case "Collectable":
+        case "Dirt":
+          return { type };
+
+        case "Player":
+          return { type, isAlive: true };
+
+        case "Rock":
+          return { type, fallingDirection: "None" };
+
+        default:
+          throw new Error("Unknown tile");
+      }
     }
 
     function updateTile(mouseEvent) {
@@ -96,14 +138,13 @@
       const tileX = Math.floor(mouseEvent.offsetX / tileWidth);
       const tileY = Math.floor(mouseEvent.offsetY / tileHeight);
 
-      const tile = parseInt(selectedTileInput.selectedOptions[0].value);
+      const tile = selectedTileInput.selectedOptions[0].value;
       const originalTile = board.getTile(tileX, tileY);
 
-      if (tile !== originalTile) {
-        const originalBoard = board.clone();
-        board.setTile(tileX, tileY, tile);
+      if (tile !== originalTile.type) {
+        board.setTile(tileX, tileY, createTile(tile));
         generatedBoardOutput.value = base64EncodeBoard(board);
-        renderBoard(boardElement, board, originalBoard);
+        renderBoard(boardElement, board, [[tileX, tileY]]);
       }
     }
 
@@ -137,17 +178,15 @@
     }
 
     function renderGameState(state) {
-      const remaining = state.board.tiles.filter(tile => tile === tileNames.COLLECTABLE).length;
-      const isAlive = state.board.tiles.some(tile => tile === tileNames.PLAYER);
+      const remaining = state.board.tiles.filter(tile => tile.type === "Collectable").length;
+      const isAlive = state.board.tiles.some(tile => tile.type === "Player" && tile.isAlive);
       gameStateElement.textContent = `${state.collected} collected, ${remaining} remaining, ${isAlive ? "alive" : "dead"}`;
     }
 
     function handleInput(keyboardEvent) {
-      if (state.fallingRocks.length > 0) {
+      if (state.updatedTiles.length > 0) {
         return;
       }
-
-      const originalBoard = state.board.clone();
 
       let handled = true;
       switch (keyboardEvent.key) {
@@ -180,9 +219,8 @@
       }
 
       if (handled) {
-        updateFallingRocks(state);
-        applyGravityToFallingRocks(state);
-        renderBoard(boardElement, state.board, originalBoard);
+        const updatedPoints = applyTileUpdates(state);
+        renderBoard(boardElement, state.board, updatedPoints);
         renderGameState(state);
         keyboardEvent.preventDefault(); // Prevent other browser behaviors
       }
@@ -233,7 +271,7 @@
       playButton.blur(); // Returns focus to the document
 
       state = new State(board.clone());
-      updateFallingRocks(state);
+      state.updateEntireBoard();
       renderGameState(state);
 
       document.addEventListener("keydown", handleInput);
@@ -245,10 +283,9 @@
 
       timerId = setInterval(
         () => {
-          if (state.fallingRocks.length > 0) {
-            const originalBoard = state.board.clone();
-            applyGravityToFallingRocks(state);
-            renderBoard(boardElement, state.board, originalBoard);
+          if (state.updatedTiles.length > 0) {
+            const updatedPoints = applyTileUpdates(state);
+            renderBoard(boardElement, state.board, updatedPoints);
             renderGameState(state);
           }
         },

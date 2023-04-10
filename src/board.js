@@ -1,21 +1,51 @@
 import * as Encoding from "./helpers/encoding.js";
 
 /** @enum {number} */
-export const tileNames = {
-  EMPTY: 0,
-  WALL: 1,
-  COLLECTABLE: 2,
-  ROCK: 3,
-  DIRT: 4,
-  PLAYER: 5,
-  DEAD_PLAYER: 6,
+const tileNames = {
+  Empty: 0,
+  Wall: 1,
+  Collectable: 2,
+  Rock: 3,
+  Dirt: 4,
+  Player: 5,
 };
 
+/**
+ * @typedef GenericTile
+ * @property {"Empty" | "Wall" | "Collectable" | "Dirt"} type
+ *
+ * @typedef PlayerTile
+ * @property {"Player"} type
+ * @property {boolean} isAlive
+ *
+ * @typedef {(
+ *  "Up" |
+ *  "Left" |
+ *  "Down" |
+ *  "Right" |
+ *  "DownLeft" |
+ *  "DownRight" |
+ *  "None"
+ * )} Direction
+ *
+ * @typedef RockTile
+ * @property {"Rock"} type
+ * @property {Direction} fallingDirection
+ *
+ * @typedef {GenericTile | PlayerTile | RockTile} Tile
+ */
+
 export class Board {
+  /** @type {Tile} */
+  static EMPTY_TILE = { type: "Empty" };
+
+  /** @type {Tile} */
+  static WALL_TILE = { type: "Wall" };
+
   /**
    * @param {number} width
    * @param {number} height
-   * @param {tileNames[]} tiles
+   * @param {Tile[]} [tiles]
    */
   constructor(width, height, tiles) {
     /** @type {number} */
@@ -24,7 +54,7 @@ export class Board {
     /** @type {number} */
     this.height = height;
 
-    /** @type {number[]} */
+    /** @type {Tile[]} */
     this.tiles = []
 
     if (tiles) {
@@ -34,7 +64,7 @@ export class Board {
 
       this.tiles = tiles;
     } else {
-      this.tiles = Array(width * height).fill(tileNames.EMPTY, 0);
+      this.tiles = Array(width * height).fill(Board.EMPTY_TILE, 0);
     }
   }
 
@@ -59,17 +89,21 @@ export class Board {
   /**
    * @param {number} x
    * @param {number} y
+   * @returns {Tile}
    */
   getTile(x, y) {
-    this.#validateCoordinate(x, y);
-    return this.tiles[x + y * this.width];
+    if (this.isInBounds(x, y)) {
+      return this.tiles[x + y * this.width];
+    }
+
+    return Board.WALL_TILE;
   }
 
   /**
    *
    * @param {number} x
    * @param {number} y
-   * @param {tileNames} tile
+   * @param {Tile} tile
    */
   setTile(x, y, tile) {
     this.#validateCoordinate(x, y);
@@ -99,10 +133,38 @@ export function base64EncodeBoard(board) {
   const rleEncodedTiles = Encoding.encodeRle(board.tiles, maxRunLength);
   for (const [runLength, tile] of rleEncodedTiles) {
     bits.push(...Encoding.encodeToBits(runLength, runLengthBits));
-    bits.push(...Encoding.encodeToBits(tile, tileBits));
+    bits.push(...Encoding.encodeToBits(tileNames[tile.type], tileBits));
   }
 
   return Encoding.base64EncodeBits(bits);
+}
+
+/**
+ * Creates a generic version of the given tile
+ *
+ * @param {number} tileValue
+ * @returns {Tile}
+ */
+function createTile(tileValue) {
+  for (const [type, value] of Object.entries(tileNames)) {
+    if (value === tileValue) {
+      switch (type) {
+        case "Empty":
+        case "Wall":
+        case "Collectable":
+        case "Dirt":
+          return { type };
+
+        case "Player":
+          return { type, isAlive: true };
+
+        case "Rock":
+          return { type, fallingDirection: "None" };
+      }
+    }
+  }
+
+  throw new Error("Unknown tile");
 }
 
 /**
@@ -143,5 +205,5 @@ export function base64DecodeBoard(encoded) {
     throw new Error("Invalid board");
   }
 
-  return new Board(width, height, tiles);
+  return new Board(width, height, tiles.map(createTile));
 }

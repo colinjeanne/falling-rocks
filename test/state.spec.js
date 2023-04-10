@@ -1,20 +1,19 @@
 import { expect } from "chai";
-import { Board, tileNames } from "../src/board.js"
+import { Board } from "../src/board.js"
 
-import {
-  State,
-  applyGravityToFallingRocks,
-  updateFallingRocks
-} from "../src/state.js";
+import { State, applyTileUpdates } from "../src/state.js";
+
+/**
+ * @typedef {import("../src/board.js").Tile} Tile
+ */
 
 const tileMap = {
-  " ": tileNames.EMPTY,
-  "W": tileNames.WALL,
-  "C": tileNames.COLLECTABLE,
-  "R": tileNames.ROCK,
-  "D": tileNames.DIRT,
-  "P": tileNames.PLAYER,
-  "X": tileNames.DEAD_PLAYER,
+  " ": "Empty",
+  "W": "Wall",
+  "C": "Collectable",
+  "R": "Rock",
+  "D": "Dirt",
+  "P": "Player",
 };
 
 /** @typedef {string[]} TestBoard */
@@ -32,6 +31,31 @@ function reverseObject(o) {
 const reverseTileMap = reverseObject(tileMap);
 
 /**
+ * Creates a generic version of the given tile type
+ *
+ * @param {string} type
+ * @returns {Tile}
+ */
+function createTile(type) {
+  switch (type) {
+    case "Empty":
+    case "Wall":
+    case "Collectable":
+    case "Dirt":
+      return { type };
+
+    case "Player":
+      return { type, isAlive: true };
+
+    case "Rock":
+      return { type, fallingDirection: "None" };
+
+    default:
+      throw new Error("Unknown tile");
+  }
+}
+
+/**
  * Generates a board from an array
  *
  * @param {TestBoard} lines
@@ -41,7 +65,7 @@ function arrayToBoard(lines) {
   const height = lines.length;
   const tiles = lines.flatMap(
     line => line.split('')
-      .map(tile => tileMap[/** @type {keyof tileMap} */(tile)])
+      .map(tile => createTile(tileMap[/** @type {keyof tileMap} */(tile)]))
   );
 
   return new Board(width, height, tiles);
@@ -54,7 +78,7 @@ function boardToArray(board) {
   const lines = [];
   for (let i = 0; i < board.height; ++i) {
     const line = board.tiles.slice(i * board.width, (i + 1) * board.width)
-      .map(tile => reverseTileMap[tile])
+      .map(tile => reverseTileMap[tile.type])
       .join('');
     lines.push(line);
   }
@@ -69,27 +93,33 @@ function boardToArray(board) {
  */
 function stabilizeState(state, intermediateBoards) {
   let currentIndex = 0;
-  updateFallingRocks(state);
+  state.updateEntireBoard();
 
-  while (state.fallingRocks.length > 0) {
-    applyGravityToFallingRocks(state);
+  while (state.updatedTiles.length > 0) {
+    applyTileUpdates(state);
 
-    if (currentIndex >= intermediateBoards.length) {
+    if (currentIndex < intermediateBoards.length) {
+      expect(boardToArray(state.board)).to.eql(
+        intermediateBoards[currentIndex]
+      );
+    } else if (currentIndex === intermediateBoards.length) {
+      // The last state should equal the second to last as an
+      // indication that the state has stabilized
+      expect(boardToArray(state.board)).to.eql(
+        intermediateBoards[currentIndex - 1]
+      );
+    } else {
       expect.fail("State stabilized late");
     }
-
-    expect(boardToArray(state.board)).to.eql(
-      intermediateBoards[currentIndex]
-    );
     ++currentIndex;
   }
 
-  if (currentIndex !== intermediateBoards.length) {
+  if (currentIndex !== intermediateBoards.length + 1) {
     expect.fail("State did not encounter all intermediate boards");
   }
 }
 
-describe("applyGravityToFallingRocks", function () {
+describe("applyTileUpdates", function () {
   it("drops rocks straight down", function () {
     const board = [
       "R",
@@ -492,18 +522,8 @@ describe("applyGravityToFallingRocks", function () {
         "    ",
         "    ",
         "  R ",
-        "R W ",
+        "  W ",
         "RR  ",
-        "WR  ",
-        " RRR",
-      ],
-      [
-        "    ",
-        "    ",
-        "    ",
-        "  R ",
-        "R W ",
-        "R   ",
         "WRR ",
         " RRR",
       ],
