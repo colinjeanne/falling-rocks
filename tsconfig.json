@@ -10,7 +10,9 @@
     "strict": true,
     "target": "ES2020",
     "checkJs": true,
-    "allowJs": true
+    "allowJs": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   },
   "exclude": [
     "node_modules",
