@@ -29,6 +29,7 @@
             <option value="Rock">Rock</option>
             <option value="Dirt">Dirt</option>
             <option value="Player">Player</option>
+            <option value="Water">Water</option>
           </select>
         </div>
         <div>
@@ -42,12 +43,40 @@
     </div>
   </body>
   <script type="module">
-    import { Board, base64EncodeBoard, base64DecodeBoard } from "./src/board.js";
+    import { Board, base64EncodeBoard, base64DecodeBoard, createTile } from "./src/board.js";
     import { State, applyTileUpdates, movePlayer } from "./src/state.js";
 
     const tickMs = 250;
     const tileSize = 20;
     const tiles = new Image();
+
+    function getFlowDirectionText(flowDirection) {
+      switch (flowDirection) {
+        case "Down":
+          return "D";
+
+        case "Left":
+          return "L";
+
+        case "Right":
+          return "R";
+
+        case "Both":
+          return "B";
+
+        case "DownFromLeft":
+          return "DL";
+
+        case "DownFromRight":
+          return "DR";
+
+        case "DownFromBoth":
+          return "DB";
+
+        case "None":
+          return "N";
+      }
+    }
 
     function drawTile(context, tile, x, y, width, height) {
       context.save();
@@ -63,6 +92,10 @@
         tileIndex = 3;
       } else if (tile.type === "Dirt") {
         tileIndex = 4;
+      } else if (tile.type === "Water" && tile.isSource) {
+        tileIndex = 7;
+      } else if (tile.type === "Water" && !tile.isSource) {
+        tileIndex = 8;
       } else if (tile.type === "Player" && tile.isAlive) {
         tileIndex = 5;
       } else if (tile.type === "Player" && !tile.isAlive) {
@@ -82,6 +115,11 @@
         width,
         height
       );
+
+      if (tile.type === "Water") {
+        const text = getFlowDirectionText(tile.flowDirection);
+        context.strokeText(text, x + width / 4, y + height / 2);
+      }
 
       context.restore();
     }
@@ -110,25 +148,6 @@
       pointsWithTiles.forEach(({x, y, tile}) => {
         drawTile(context, tile, x * tileWidth, y * tileHeight, tileWidth, tileHeight);
       });
-    }
-
-    function createTile(type) {
-      switch (type) {
-        case "Empty":
-        case "Wall":
-        case "Collectable":
-        case "Dirt":
-          return { type };
-
-        case "Player":
-          return { type, isAlive: true };
-
-        case "Rock":
-          return { type, fallingDirection: "None" };
-
-        default:
-          throw new Error("Unknown tile");
-      }
     }
 
     function updateTile(mouseEvent) {
@@ -189,29 +208,30 @@
       }
 
       let handled = true;
+      const updatedPoints = [];
       switch (keyboardEvent.key) {
         case "Up":
         case "ArrowUp":
         case "w":
-          movePlayer(state, "Up");
+          updatedPoints.push(...movePlayer(state, "Up"));
           break;
 
         case "Left":
         case "ArrowLeft":
         case "a":
-          movePlayer(state, "Left");
+          updatedPoints.push(...movePlayer(state, "Left"));
           break;
 
         case "Down":
         case "ArrowDown":
         case "s":
-          movePlayer(state, "Down");
+          updatedPoints.push(...movePlayer(state, "Down"));
           break;
 
         case "Right":
         case "ArrowRight":
         case "d":
-          movePlayer(state, "Right");
+          updatedPoints.push(...movePlayer(state, "Right"));
           break;
 
         default:
@@ -219,7 +239,7 @@
       }
 
       if (handled) {
-        const updatedPoints = applyTileUpdates(state);
+        updatedPoints.push(...applyTileUpdates(state));
         renderBoard(boardElement, state.board, updatedPoints);
         renderGameState(state);
         keyboardEvent.preventDefault(); // Prevent other browser behaviors
