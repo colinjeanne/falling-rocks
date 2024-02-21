@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { Board } from "../src/board.js"
+import { Board, createTile } from "../src/board.js"
 
 import { State, applyTileUpdates } from "../src/state.js";
 
@@ -7,6 +7,11 @@ import { State, applyTileUpdates } from "../src/state.js";
  * @typedef {import("../src/board.js").Tile} Tile
  */
 
+/**
+ * @type {{
+ *  [key: string]: Tile["type"]
+ * }}
+ */
 const tileMap = {
   " ": "Empty",
   "W": "Wall",
@@ -29,31 +34,6 @@ function reverseObject(o) {
 }
 
 const reverseTileMap = reverseObject(tileMap);
-
-/**
- * Creates a generic version of the given tile type
- *
- * @param {string} type
- * @returns {Tile}
- */
-function createTile(type) {
-  switch (type) {
-    case "Empty":
-    case "Wall":
-    case "Collectable":
-    case "Dirt":
-      return { type };
-
-    case "Player":
-      return { type, isAlive: true };
-
-    case "Rock":
-      return { type, fallingDirection: "None" };
-
-    default:
-      throw new Error("Unknown tile");
-  }
-}
 
 /**
  * Generates a board from an array

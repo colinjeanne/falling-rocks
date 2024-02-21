@@ -8,6 +8,7 @@ const tileNames = {
   Rock: 3,
   Dirt: 4,
   Player: 5,
+  Water: 6,
 };
 
 /**
@@ -30,9 +31,25 @@ const tileNames = {
  *
  * @typedef RockTile
  * @property {"Rock"} type
- * @property {Direction} fallingDirection
+ * @property {"Down" | "DownLeft" | "DownRight" | "None"} fallingDirection
  *
- * @typedef {GenericTile | PlayerTile | RockTile} Tile
+ * @typedef {(
+ *  "Down" |
+*   "Left" |
+*   "Right" |
+*   "Both" |
+*   "DownFromLeft" |
+*   "DownFromRight" |
+*   "DownFromBoth" |
+*   "None"
+* )} FlowDirection
+ *
+ * @typedef WaterTile
+ * @property {"Water"} type
+ * @property {boolean} isSource
+ * @property {FlowDirection} flowDirection
+ *
+ * @typedef {GenericTile | PlayerTile | RockTile | WaterTile} Tile
  */
 
 export class Board {
@@ -62,7 +79,13 @@ export class Board {
         throw new Error("Invalid board");
       }
 
-      this.tiles = tiles;
+      this.tiles = tiles.map(tile => {
+        if (tile.type === "Player") {
+          return { ...tile, isAlive: true };
+        }
+
+        return tile;
+      });
     } else {
       this.tiles = Array(width * height).fill(Board.EMPTY_TILE, 0);
     }
@@ -142,25 +165,38 @@ export function base64EncodeBoard(board) {
 /**
  * Creates a generic version of the given tile
  *
+ * @param {Tile["type"]} type
+ * @returns {Tile}
+ */
+export function createTile(type) {
+  switch (type) {
+    case "Empty":
+    case "Wall":
+    case "Collectable":
+    case "Dirt":
+      return { type };
+
+    case "Player":
+      return { type, isAlive: true };
+
+    case "Rock":
+      return { type, fallingDirection: "None" };
+
+    case "Water":
+      return { type, isSource: true, flowDirection: "None" };
+  }
+}
+
+/**
+ * Creates a generic version of the given tile
+ *
  * @param {number} tileValue
  * @returns {Tile}
  */
-function createTile(tileValue) {
-  for (const [type, value] of Object.entries(tileNames)) {
+function createTileFromTileValue(tileValue) {
+  for (const [type, value] of /** @type {[Tile["type"], number][]} */ (Object.entries(tileNames))) {
     if (value === tileValue) {
-      switch (type) {
-        case "Empty":
-        case "Wall":
-        case "Collectable":
-        case "Dirt":
-          return { type };
-
-        case "Player":
-          return { type, isAlive: true };
-
-        case "Rock":
-          return { type, fallingDirection: "None" };
-      }
+      return createTile(type);
     }
   }
 
@@ -205,5 +241,5 @@ export function base64DecodeBoard(encoded) {
     throw new Error("Invalid board");
   }
 
-  return new Board(width, height, tiles.map(createTile));
+  return new Board(width, height, tiles.map(createTileFromTileValue));
 }
