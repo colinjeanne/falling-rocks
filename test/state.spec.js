@@ -1,4 +1,6 @@
-import { expect } from "chai";
+import * as assert from "node:assert/strict";
+import { describe, it } from "node:test";
+
 import { Board, createTile } from "../src/board.js"
 
 import { State, applyTileUpdates } from "../src/state.js";
@@ -79,23 +81,25 @@ function stabilizeState(state, intermediateBoards) {
     applyTileUpdates(state);
 
     if (currentIndex < intermediateBoards.length) {
-      expect(boardToArray(state.board)).to.eql(
+      assert.deepStrictEqual(
+        boardToArray(state.board),
         intermediateBoards[currentIndex]
       );
     } else if (currentIndex === intermediateBoards.length) {
       // The last state should equal the second to last as an
       // indication that the state has stabilized
-      expect(boardToArray(state.board)).to.eql(
+      assert.deepStrictEqual(
+        boardToArray(state.board),
         intermediateBoards[currentIndex - 1]
       );
     } else {
-      expect.fail("State stabilized late");
+      assert.fail("State stabilized late");
     }
     ++currentIndex;
   }
 
   if (currentIndex !== intermediateBoards.length + 1) {
-    expect.fail("State did not encounter all intermediate boards");
+    assert.fail("State did not encounter all intermediate boards");
   }
 }
 

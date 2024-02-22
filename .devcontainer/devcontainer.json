@@ -1,11 +1,6 @@
 {
 	"name": "Node.js & TypeScript",
-	"build": {
-		"dockerfile": "Dockerfile",
-		"args": {
-			"VARIANT": "18"
-		}
-	},
+	"image": "mcr.microsoft.com/vscode/devcontainers/typescript-node:20",
 	"customizations": {
 		"vscode": {
 			"extensions": [
