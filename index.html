@@ -44,7 +44,7 @@
   </body>
   <script type="module">
     import { Board, base64EncodeBoard, base64DecodeBoard, createTile } from "./src/board.js";
-    import { State, applyTileUpdates, movePlayer } from "./src/state.js";
+    import { State, applyPatternTileUpdates, movePlayer } from "./src/state.js";
 
     const tickMs = 250;
     const tileSize = 20;
@@ -63,18 +63,6 @@
 
         case "Both":
           return "B";
-
-        case "DownFromLeft":
-          return "DL";
-
-        case "DownFromRight":
-          return "DR";
-
-        case "DownFromBoth":
-          return "DB";
-
-        case "None":
-          return "N";
       }
     }
 
@@ -239,7 +227,7 @@
       }
 
       if (handled) {
-        updatedPoints.push(...applyTileUpdates(state));
+        updatedPoints.push(...applyPatternTileUpdates(state));
         renderBoard(boardElement, state.board, updatedPoints);
         renderGameState(state);
         keyboardEvent.preventDefault(); // Prevent other browser behaviors
@@ -304,7 +292,7 @@
       timerId = setInterval(
         () => {
           if (state.updatedTiles.length > 0) {
-            const updatedPoints = applyTileUpdates(state);
+            const updatedPoints = applyPatternTileUpdates(state);
             renderBoard(boardElement, state.board, updatedPoints);
             renderGameState(state);
           }

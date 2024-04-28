@@ -14,10 +14,12 @@ const tileNames = {
 /**
  * @typedef GenericTile
  * @property {"Empty" | "Wall" | "Collectable" | "Dirt"} type
+ * @property {boolean} justUpdated
  *
  * @typedef PlayerTile
  * @property {"Player"} type
  * @property {boolean} isAlive
+ * @property {boolean} justUpdated
  *
  * @typedef {(
  *  "Up" |
@@ -32,32 +34,30 @@ const tileNames = {
  * @typedef RockTile
  * @property {"Rock"} type
  * @property {"Down" | "DownLeft" | "DownRight" | "None"} fallingDirection
+ * @property {boolean} justUpdated
  *
  * @typedef {(
  *  "Down" |
-*   "Left" |
-*   "Right" |
-*   "Both" |
-*   "DownFromLeft" |
-*   "DownFromRight" |
-*   "DownFromBoth" |
-*   "None"
-* )} FlowDirection
+ *  "Left" |
+ *  "Right" |
+ *  "Both"
+ * )} FlowDirection
  *
  * @typedef WaterTile
  * @property {"Water"} type
  * @property {boolean} isSource
  * @property {FlowDirection} flowDirection
+ * @property {boolean} justUpdated
  *
  * @typedef {GenericTile | PlayerTile | RockTile | WaterTile} Tile
  */
 
 export class Board {
   /** @type {Tile} */
-  static EMPTY_TILE = { type: "Empty" };
+  static EMPTY_TILE = { type: "Empty", justUpdated: false };
 
   /** @type {Tile} */
-  static WALL_TILE = { type: "Wall" };
+  static WALL_TILE = { type: "Wall", justUpdated: false };
 
   /**
    * @param {number} width
@@ -105,7 +105,7 @@ export class Board {
    */
   #validateCoordinate(x, y) {
     if (!this.isInBounds(x, y)) {
-      throw new Error("Coordinate out of bounds");
+      throw new Error(`Coordinate (${x}, ${y}) out of bounds`);
     }
   }
 
@@ -174,16 +174,21 @@ export function createTile(type) {
     case "Wall":
     case "Collectable":
     case "Dirt":
-      return { type };
+      return { type, justUpdated: false };
 
     case "Player":
-      return { type, isAlive: true };
+      return { type, isAlive: true, justUpdated: false };
 
     case "Rock":
-      return { type, fallingDirection: "None" };
+      return { type, fallingDirection: "None", justUpdated: false };
 
     case "Water":
-      return { type, isSource: true, flowDirection: "None" };
+      return {
+        type,
+        isSource: true,
+        flowDirection: "Both",
+        justUpdated: false
+      };
   }
 }
 
