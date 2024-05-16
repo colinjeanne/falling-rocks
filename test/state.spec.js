@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 
 import { Board, createTile } from "../src/board.js"
 
-import { State, applyTileUpdates } from "../src/state.js";
+import { State, applyPatternTileUpdates } from "../src/state.js";
 
 /**
  * @typedef {import("../src/board.js").Tile} Tile
@@ -21,6 +21,8 @@ const tileMap = {
   "R": "Rock",
   "D": "Dirt",
   "P": "Player",
+  "X": "Player",
+  "~": "Water"
 };
 
 /** @typedef {string[]} TestBoard */
@@ -60,7 +62,17 @@ function boardToArray(board) {
   const lines = [];
   for (let i = 0; i < board.height; ++i) {
     const line = board.tiles.slice(i * board.width, (i + 1) * board.width)
-      .map(tile => reverseTileMap[tile.type])
+      .map(tile => {
+        if (tile.type === "Player") {
+          if (tile.isAlive) {
+            return "P";
+          } else {
+            return "X";
+          }
+        }
+
+        return reverseTileMap[tile.type];
+      })
       .join('');
     lines.push(line);
   }
@@ -74,11 +86,13 @@ function boardToArray(board) {
  * @param {TestBoard[]} intermediateBoards
  */
 function stabilizeState(state, intermediateBoards) {
+  const originalBoard = boardToArray(state.board);
+
   let currentIndex = 0;
   state.updateEntireBoard();
 
   while (state.updatedTiles.length > 0) {
-    applyTileUpdates(state);
+    applyPatternTileUpdates(state);
 
     if (currentIndex < intermediateBoards.length) {
       assert.deepStrictEqual(
@@ -86,12 +100,17 @@ function stabilizeState(state, intermediateBoards) {
         intermediateBoards[currentIndex]
       );
     } else if (currentIndex === intermediateBoards.length) {
-      // The last state should equal the second to last as an
-      // indication that the state has stabilized
-      assert.deepStrictEqual(
-        boardToArray(state.board),
-        intermediateBoards[currentIndex - 1]
-      );
+      if (intermediateBoards.length === 0) {
+        // There are no expected changes
+        assert.deepStrictEqual(boardToArray(state.board), originalBoard);
+      } else {
+        // The last state should equal the second to last as an
+        // indication that the state has stabilized
+        assert.deepStrictEqual(
+          boardToArray(state.board),
+          intermediateBoards[currentIndex - 1]
+        );
+      }
     } else {
       assert.fail("State stabilized late");
     }
@@ -103,7 +122,7 @@ function stabilizeState(state, intermediateBoards) {
   }
 }
 
-describe("applyTileUpdates", function () {
+describe("applyPatternTileUpdates", function () {
   it("drops rocks straight down", function () {
     const board = [
       "R",
@@ -117,6 +136,11 @@ describe("applyTileUpdates", function () {
         " ",
         "R",
         " ",
+      ],
+      [
+        " ",
+        " ",
+        "R",
       ],
       [
         " ",
@@ -153,6 +177,13 @@ describe("applyTileUpdates", function () {
         "R",
         "R",
       ],
+      [
+        " ",
+        " ",
+        "R",
+        "R",
+        "R",
+      ],
     ];
 
     stabilizeState(state, intermediateBoards);
@@ -177,6 +208,11 @@ describe("applyTileUpdates", function () {
         "  ",
         "RR",
       ],
+      [
+        "  ",
+        "  ",
+        "RR",
+      ],
     ];
 
     stabilizeState(state, intermediateBoards);
@@ -195,6 +231,11 @@ describe("applyTileUpdates", function () {
         "  ",
         " R",
         " R",
+      ],
+      [
+        "  ",
+        "  ",
+        "RR",
       ],
       [
         "  ",
@@ -234,6 +275,12 @@ describe("applyTileUpdates", function () {
         "RR",
         "WR",
       ],
+      [
+        "  ",
+        "  ",
+        "RR",
+        "WR",
+      ],
     ];
 
     stabilizeState(state, intermediateBoards);
@@ -260,6 +307,12 @@ describe("applyTileUpdates", function () {
         " R",
         "RR",
         " W",
+      ],
+      [
+        "  ",
+        "  ",
+        "RR",
+        "RW",
       ],
       [
         "  ",
@@ -311,6 +364,13 @@ describe("applyTileUpdates", function () {
         "WRW",
         " R ",
       ],
+      [
+        "   ",
+        "   ",
+        "R R",
+        "WRW",
+        " R ",
+      ],
     ];
 
     stabilizeState(state, intermediateBoards);
@@ -337,6 +397,12 @@ describe("applyTileUpdates", function () {
         "   ",
         " R ",
         "RR ",
+      ],
+      [
+        "   ",
+        "   ",
+        "   ",
+        "RRR",
       ],
       [
         "   ",
@@ -388,6 +454,13 @@ describe("applyTileUpdates", function () {
         "WRR",
         " WR",
       ],
+      [
+        "   ",
+        "   ",
+        "R  ",
+        "WRR",
+        " WR",
+      ],
     ];
 
     stabilizeState(state, intermediateBoards);
@@ -424,6 +497,13 @@ describe("applyTileUpdates", function () {
         " RR",
         "RRW",
         " W ",
+      ],
+      [
+        "   ",
+        "   ",
+        "  R",
+        "RRW",
+        "RW ",
       ],
       [
         "   ",
@@ -485,8 +565,8 @@ describe("applyTileUpdates", function () {
         "    ",
         "    ",
         "    ",
-        "  R ",
-        "RRW ",
+        "    ",
+        "RRWR",
         "RR R",
         "WR R",
         "    ",
@@ -495,9 +575,9 @@ describe("applyTileUpdates", function () {
         "    ",
         "    ",
         "    ",
-        "  R ",
+        "    ",
         "R W ",
-        "RR  ",
+        "RR R",
         "WR R",
         " R R",
       ],
@@ -505,11 +585,351 @@ describe("applyTileUpdates", function () {
         "    ",
         "    ",
         "    ",
-        "  R ",
+        "    ",
         "  W ",
         "RR  ",
-        "WRR ",
+        "WRRR",
         " RRR",
+      ],
+      [
+        "    ",
+        "    ",
+        "    ",
+        "    ",
+        "  W ",
+        "RR  ",
+        "WRRR",
+        " RRR",
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("allows rocks to rest on a player", function () {
+    const board = [
+      "R",
+      "P",
+      " ",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures rocks falling down kill a player", function () {
+    const board = [
+      "R",
+      " ",
+      "P",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        " ",
+        "R",
+        "P",
+      ],
+      [
+        " ",
+        "R",
+        "X",
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures rocks falling down left kill a player", function () {
+    const board = [
+      " R",
+      "  ",
+      "PW",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        "  ",
+        " R",
+        "PW",
+      ],
+      [
+        "  ",
+        " R",
+        "XW",
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures rocks falling down right kill a player", function () {
+    const board = [
+      "R ",
+      "  ",
+      "WP",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        "  ",
+        "R ",
+        "WP",
+      ],
+      [
+        "  ",
+        "R ",
+        "WX",
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures water flows down", function () {
+    const board = [
+      "~",
+      " ",
+      " ",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        "~",
+        "~",
+        " ",
+      ],
+      [
+        "~",
+        "~",
+        "~",
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures down-flowing water kills a player", function () {
+    const board = [
+      "~",
+      " ",
+      "P",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        "~",
+        "~",
+        "P",
+      ],
+      [
+        "~",
+        "~",
+        "X",
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures water flows right", function () {
+    const board = [
+      "~  ",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        "~~ ",
+      ],
+      [
+        "~~~",
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures right-flowing water kills a player", function () {
+    const board = [
+      "~ P",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        "~~P",
+      ],
+      [
+        "~~X",
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures water flows left", function () {
+    const board = [
+      "  ~",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        " ~~",
+      ],
+      [
+        "~~~",
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures left-flowing water kills a player", function () {
+    const board = [
+      "P ~",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        "P~~",
+      ],
+      [
+        "X~~",
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures down- and both-flowing water dry without a down-flowing source", function () {
+    const board = [
+      " R ",
+      "   ",
+      " ~ ",
+      " W ",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        "   ",
+        " R ",
+        "~~~",
+        " W ",
+      ],
+      [
+        "   ",
+        "   ",
+        "~R~",
+        "~W~",
+      ],
+      [
+        "   ",
+        "   ",
+        "~  ",
+        "RW~",
+      ],
+      [
+        "   ",
+        "   ",
+        "   ",
+        "RW ",
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures right-flowing water dries without a right-flowing source", function () {
+    const board = [
+      "R  ",
+      "   ",
+      "~  ",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        "   ",
+        "R  ",
+        "~~ ",
+      ],
+      [
+        "   ",
+        "   ",
+        "R~~",
+      ],
+      [
+        "   ",
+        "   ",
+        "R ~",
+      ],
+      [
+        "   ",
+        "   ",
+        "R  ",
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures left-flowing water dries without a left-flowing source", function () {
+    const board = [
+      "  R",
+      "   ",
+      "  ~",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        "   ",
+        "  R",
+        " ~~",
+      ],
+      [
+        "   ",
+        "   ",
+        "~~R",
+      ],
+      [
+        "   ",
+        "   ",
+        "~~R",
+      ],
+      [
+        "   ",
+        "   ",
+        "~ R",
+      ],
+      [
+        "   ",
+        "   ",
+        "  R",
       ],
     ];
 
