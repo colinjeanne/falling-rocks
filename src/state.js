@@ -8,6 +8,8 @@ import { patterns, applyTileUpdate } from "./patterns.js";
  * @typedef {import("./board.js").Tile} Tile
  * @typedef {import("./patterns.js").TileUpdate} TileUpdate
  * @typedef {[number, number]} Point
+ *
+ * @typedef {"Lose" | "In Progress" | "Win"} GameState
  */
 
 export class State {
@@ -18,10 +20,40 @@ export class State {
     /** @type {Board} */
     this.board = board;
 
+    /** @type {Board} */
+    this.originalBoard = this.board.clone();
+
     /** @type {number} */
     this.collected = 0;
 
     /** @type {Point[]} */
+    this.updatedTiles = [];
+  }
+
+  get collectablesRemaining() {
+    return this.board.tiles.filter(tile => tile.type === "Collectable").length;
+  }
+
+  /**
+   * The current state of the game
+   *
+   * @returns {GameState}
+  */
+  get gameState() {
+    if (!this.board.tiles.some(tile => tile.type === "Player" && tile.isAlive)) {
+      return "Lose"
+    }
+
+    if ((this.collectablesRemaining === 0) && (this.updatedTiles.length === 0)) {
+      return "Win";
+    }
+
+    return "In Progress";
+  }
+
+  reset() {
+    this.board = this.originalBoard.clone();
+    this.collected = 0;
     this.updatedTiles = [];
   }
 
