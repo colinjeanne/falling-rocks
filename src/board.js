@@ -13,7 +13,7 @@ const tileNames = {
 
 /**
  * @typedef GenericTile
- * @property {"Empty" | "Wall" | "Collectable" | "Dirt"} type
+ * @property {"Empty" | "Wall" | "Collectable"} type
  * @property {boolean} justUpdated
  *
  * @typedef PlayerTile
@@ -49,7 +49,12 @@ const tileNames = {
  * @property {FlowDirection} flowDirection
  * @property {boolean} justUpdated
  *
- * @typedef {GenericTile | PlayerTile | RockTile | WaterTile} Tile
+ * @typedef DirtTile
+ * @property {"Dirt"} type
+ * @property {FlowDirection | "None"} flowDirection
+ * @property {boolean} justUpdated
+ *
+ * @typedef {DirtTile | GenericTile | PlayerTile | RockTile | WaterTile} Tile
  */
 
 export class Board {
@@ -173,8 +178,10 @@ export function createTile(type) {
     case "Empty":
     case "Wall":
     case "Collectable":
-    case "Dirt":
       return { type, justUpdated: false };
+
+    case "Dirt":
+      return { type, flowDirection: "None", justUpdated: false };
 
     case "Player":
       return { type, isAlive: true, justUpdated: false };

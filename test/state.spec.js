@@ -20,6 +20,7 @@ const tileMap = {
   "C": "Collectable",
   "R": "Rock",
   "D": "Dirt",
+  "#": "Dirt",
   "P": "Player",
   "X": "Player",
   "~": "Water"
@@ -68,6 +69,12 @@ function boardToArray(board) {
             return "P";
           } else {
             return "X";
+          }
+        } else if (tile.type === "Dirt") {
+          if (tile.flowDirection === "None") {
+            return "D";
+          } else {
+            return "#";
           }
         }
 
@@ -715,6 +722,11 @@ describe("applyPatternTileUpdates", function () {
         "~",
         "~",
       ],
+      [
+        "~",
+        "~",
+        "~",
+      ],
     ];
 
     stabilizeState(state, intermediateBoards);
@@ -734,6 +746,11 @@ describe("applyPatternTileUpdates", function () {
         "~",
         "~",
         "P",
+      ],
+      [
+        "~",
+        "~",
+        "X",
       ],
       [
         "~",
@@ -930,6 +947,264 @@ describe("applyPatternTileUpdates", function () {
         "   ",
         "   ",
         "  R",
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures water from waterlogged dirt flows down", function () {
+    const board = [
+      "~",
+      "D",
+      " ",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        "~",
+        "#",
+        " ",
+      ],
+      [
+        "~",
+        "#",
+        "~",
+      ],
+      [
+        "~",
+        "#",
+        "~",
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures down-flowing water kills a player", function () {
+    const board = [
+      "~",
+      "D",
+      "P",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        "~",
+        "#",
+        "P",
+      ],
+      [
+        "~",
+        "#",
+        "X",
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures water flows right", function () {
+    const board = [
+      "~D ",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        "~# ",
+      ],
+      [
+        "~#~",
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures right-flowing water kills a player", function () {
+    const board = [
+      "~DP",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        "~#P",
+      ],
+      [
+        "~#X",
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures water flows left", function () {
+    const board = [
+      " D~",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        " #~",
+      ],
+      [
+        "~#~",
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures left-flowing water kills a player", function () {
+    const board = [
+      "PD~",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        "P#~",
+      ],
+      [
+        "X#~",
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures both-flowing water dry without a down-flowing source", function () {
+    const board = [
+      " R ",
+      "   ",
+      " ~ ",
+      " D ",
+      " W ",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        "   ",
+        " R ",
+        " ~ ",
+        " # ",
+        " W ",
+      ],
+      [
+        "   ",
+        "   ",
+        " R ",
+        "~#~",
+        " W ",
+      ],
+      [
+        "   ",
+        "   ",
+        "   ",
+        "RD~",
+        "~W~",
+      ],
+      [
+        "   ",
+        "   ",
+        "   ",
+        " D ",
+        "RW~",
+      ],
+      [
+        "   ",
+        "   ",
+        "   ",
+        " D ",
+        "RW ",
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures right-flowing water dries without a right-flowing source", function () {
+    const board = [
+      "R  ",
+      "   ",
+      "~D ",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        "   ",
+        "R  ",
+        "~# ",
+      ],
+      [
+        "   ",
+        "   ",
+        "R#~",
+      ],
+      [
+        "   ",
+        "   ",
+        "RD~",
+      ],
+      [
+        "   ",
+        "   ",
+        "RD ",
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures left-flowing water dries without a left-flowing source", function () {
+    const board = [
+      "  R",
+      "   ",
+      " D~",
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        "   ",
+        "  R",
+        " #~",
+      ],
+      [
+        "   ",
+        "   ",
+        "~#R",
+      ],
+      [
+        "   ",
+        "   ",
+        "~#R",
+      ],
+      [
+        "   ",
+        "   ",
+        "~DR",
+      ],
+      [
+        "   ",
+        "   ",
+        " DR",
       ],
     ];
 

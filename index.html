@@ -107,6 +107,9 @@
       if (tile.type === "Water") {
         const text = getFlowDirectionText(tile.flowDirection);
         context.strokeText(text, x + width / 4, y + height / 2);
+      } else if (tile.type === "Dirt" && tile.flowDirection !== "None") {
+        const text = getFlowDirectionText(tile.flowDirection);
+        context.strokeText(text, x + width / 4, y + height / 2);
       }
 
       context.restore();
