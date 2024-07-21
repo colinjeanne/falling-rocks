@@ -151,7 +151,8 @@ function canMoveToLocation(board, x, y, direction) {
   if (
     tile.type === "Wall" ||
     tile.type === "Player" ||
-    tile.type === "Water"
+    tile.type === "Water" ||
+    (tile.type === "Dirt" && tile.flowDirection !== "None")
   ) {
     return false;
   } else if (tile.type === "Rock") {

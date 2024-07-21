@@ -1,4 +1,5 @@
 /**
+ * @typedef {import("./board.js").DirtTile} DirtTile
  * @typedef {import("./board.js").FlowDirection} FlowDirection
  * @typedef {import("./board.js").GenericTile} GenericTile
  * @typedef {import("./board.js").PlayerTile} PlayerTile
@@ -75,6 +76,13 @@ function isTile(patternTile) {
       ) {
         return false;
       }
+    } else if (tile.type === "Dirt" && patternTile.type === "Dirt") {
+      if (
+        (patternTile.flowDirection !== undefined) &&
+        (tile.flowDirection !== patternTile.flowDirection)
+      ) {
+        return false;
+      }
     }
 
     return true;
@@ -116,9 +124,16 @@ function isFallingRock(tile) {
  */
 function supportsFlowDirection(flowDirection) {
   return (tile) =>
-    (tile.type === "Water") && (
-      tile.isSource || (tile.flowDirection === flowDirection) ||
-      (tile.flowDirection === "Both")
+    (
+      (tile.type === "Water") && (
+        tile.isSource || (tile.flowDirection === flowDirection) ||
+        (tile.flowDirection === "Both")
+      )
+    ) || (
+      (tile.type === "Dirt") && (
+        (tile.flowDirection === flowDirection) ||
+        (tile.flowDirection === "Both")
+      )
     );
 }
 
@@ -136,12 +151,33 @@ function isFlowingWater(flowDirection) {
 }
 
 /**
+ * Whether a tile is a waterlogged dirt
+ *
+ * @param {Tile} tile
+ */
+function isWaterloggedDirt(tile) {
+  return tile.type === "Dirt" && tile.flowDirection !== "None";
+}
+
+/**
+ * Whether a tile is a waterlogged dirt with a specific direction
+ *
+ * @param {FlowDirection} flowDirection
+ * @returns {Pattern}
+ */
+function isDirtFlowing(flowDirection) {
+  return (tile) =>
+    (tile.type === "Dirt") &&
+    (tile.flowDirection === flowDirection);
+}
+
+/**
  * Whether a tile behaves as if it were solid for water
  *
  * @param {Tile} tile
  */
 function isSolidForWater(tile) {
-  return tile.type !== "Empty" && tile.type !== "Water";
+  return !(["Dirt", "Empty", "Water"].includes(tile.type));
 }
 
 /**
@@ -155,6 +191,7 @@ function isLivingPlayer(tile) {
 
 /**
  * @typedef {(
+ *   Omit<DirtTile, "justUpdated"> |
  *   Omit<GenericTile, "justUpdated"> |
  *   Omit<PlayerTile, "justUpdated"> |
  *   Omit<RockTile, "justUpdated"> |
@@ -334,9 +371,9 @@ export const patterns = [
   // Water flows down
   [
     [
-      any, isTile({ type: "Water" }), any,
+      any, or(isTile({ type: "Water" }), isWaterloggedDirt), any,
       any, isTile({ type: "Empty" }), any,
-      any, isTile({ type: "Empty" }), any,
+      any, any, any,
     ],
     [
       null, null, null,
@@ -347,7 +384,7 @@ export const patterns = [
   // Water onto a surface
   [
     [
-      any, isTile({ type: "Water" }), any,
+      any, or(isTile({ type: "Water" }), isWaterloggedDirt), any,
       any, isTile({ type: "Empty" }), any,
       any, isSolidForWater, any,
     ],
@@ -355,6 +392,19 @@ export const patterns = [
       null, null, null,
       null, { type: "Water", isSource: false, flowDirection: "Both" }, null,
       null, null, null,
+    ],
+  ],
+  // Down-flowing water kills a player
+  [
+    [
+      any, any, any,
+      any, or(isTile({ type: "Water" }), isWaterloggedDirt), any,
+      any, isLivingPlayer, any,
+    ],
+    [
+      null, null, null,
+      null, null, null,
+      null, { type: "Player", isAlive: false }, null,
     ],
   ],
   // Down-ward flowing water converts to both when a surface is below it
@@ -383,19 +433,6 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Down-flowing water kills a player
-  [
-    [
-      any, any, any,
-      any, isTile({ type: "Water" }), any,
-      any, isLivingPlayer, any,
-    ],
-    [
-      null, null, null,
-      null, null, null,
-      null, { type: "Player", isAlive: false }, null,
-    ],
-  ],
   // Water spreads right
   [
     [
@@ -413,7 +450,7 @@ export const patterns = [
   [
     [
       any, any, any,
-      any, isTile({ type: "Water" }), isLivingPlayer,
+      any, or(isTile({ type: "Water" }), isWaterloggedDirt), isLivingPlayer,
       any, isSolidForWater, any,
     ],
     [
@@ -439,7 +476,7 @@ export const patterns = [
   [
     [
       any, any, any,
-      any, isLivingPlayer, and(isTile({ type: "Water" }), not(wasJustUpdated)),
+      any, isLivingPlayer, and(or(isTile({ type: "Water" }), isWaterloggedDirt), not(wasJustUpdated)),
       any, any, isSolidForWater,
     ],
     [
@@ -452,7 +489,7 @@ export const patterns = [
   // down-flowing water above it
   [
     [
-      any, not(isTile({ type: "Water" })), any,
+      any, not(or(isTile({ type: "Water" }), isWaterloggedDirt)), any,
       any, or(isFlowingWater("Both"), isFlowingWater("Down")), any,
       any, any, any,
     ],
@@ -487,6 +524,126 @@ export const patterns = [
     [
       null, null, null,
       null, { type: "Empty" }, null,
+      null, null, null,
+    ],
+  ],
+  // Water waterlogs dirt from the top
+  [
+    [
+      any, or(isTile({ type: "Water" }), isWaterloggedDirt), any,
+      any, isTile({ type: "Dirt", flowDirection: "None" }), any,
+      any, not(isSolidForWater), any,
+    ],
+    [
+      null, null, null,
+      null, { type: "Dirt", flowDirection: "Down" }, null,
+      null, null, null,
+    ],
+  ],
+  // Waterlogged dirt flows onto a surface
+  [
+    [
+      any, or(isTile({ type: "Water" }), isWaterloggedDirt), any,
+      any, isTile({ type: "Dirt", flowDirection: "None" }), any,
+      any, isSolidForWater, any,
+    ],
+    [
+      null, null, null,
+      null, { type: "Dirt", flowDirection: "Both" }, null,
+      null, null, null,
+    ],
+  ],
+  // Down-ward flowing waterlogged dirt converts to both when a surface is below it
+  [
+    [
+      any, any, any,
+      any, isDirtFlowing("Down"), any,
+      any, isSolidForWater, any,
+    ],
+    [
+      null, null, null,
+      null, { type: "Dirt", flowDirection: "Both" }, null,
+      null, null, null,
+    ],
+  ],
+  // Both-ward flowing waterlogged dirt converts to down when no surface is below it
+  [
+    [
+      any, any, any,
+      any, isDirtFlowing("Both"), any,
+      any, not(isSolidForWater), any,
+    ],
+    [
+      null, null, null,
+      null, { type: "Dirt", flowDirection: "Down" }, null,
+      null, null, null,
+    ],
+  ],
+  // Water waterlogs to the right
+  [
+    [
+      any, any, any,
+      any, supportsFlowDirection("Right"), isTile({ type: "Dirt", flowDirection: "None" }),
+      any, isSolidForWater, any,
+    ],
+    [
+      null, null, null,
+      null, null, { type: "Dirt", flowDirection: "Right" },
+      null, null, null,
+    ],
+  ],
+  // Water waterlogs to the left
+  [
+    [
+      any, any, any,
+      any, isTile({ type: "Dirt", flowDirection: "None" }), and(or(isTile({ type: "Water" }), isWaterloggedDirt), not(wasJustUpdated)),
+      any, any, isSolidForWater,
+    ],
+    [
+      null, null, null,
+      null, { type: "Dirt", flowDirection: "Left" }, null,
+      null, null, null,
+    ],
+  ],
+  // Both-flowing and down-flowing water dries if it doesn't have a source or
+  // down-flowing water above it
+  [
+    [
+      any, not(or(isTile({ type: "Water" }), isWaterloggedDirt)), any,
+      any, or(isDirtFlowing("Both"), isDirtFlowing("Down")), any,
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      null, { type: "Dirt", flowDirection: "None" }, null,
+      null, null, null,
+    ],
+  ],
+  // Right-flowing water dries if it doesn't have a source or right-flowing
+  // water to its right
+  [
+    [
+      any, any, any,
+      not(supportsFlowDirection("Right")), isDirtFlowing("Right"), any,
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      null, { type: "Dirt", flowDirection: "None" }, null,
+      null, null, null,
+    ],
+  ],
+  // Left-flowing water dries if it doesn't have a source or left-flowing
+  // water to its left
+  [
+    [
+      any, any, any,
+      any, isDirtFlowing("Left"), and(not(supportsFlowDirection("Left")), not(wasJustUpdated)),
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      null, { type: "Dirt", flowDirection: "None" }, null,
       null, null, null,
     ],
   ],
