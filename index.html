@@ -9,6 +9,7 @@
       <div>
         <button id="build" type="button">Build</button>
         <button id="play" type="button">Play</button>
+        <button id="reset" type="button">Reset</button>
       </div>
       <canvas id="board" width="640" height="640"></canvas>
       <div id="gameState"></div>
@@ -169,6 +170,7 @@
     const gameStateElement = document.getElementById("gameState");
     const loadedBoard = document.getElementById("loadedBoard");
     const loadBoard = document.getElementById("loadBoard");
+    const resetButton = document.getElementById("reset");
 
     let board;
     let state;
@@ -188,9 +190,8 @@
     }
 
     function renderGameState(state) {
-      const remaining = state.board.tiles.filter(tile => tile.type === "Collectable").length;
-      const isAlive = state.board.tiles.some(tile => tile.type === "Player" && tile.isAlive);
-      gameStateElement.textContent = `${state.collected} collected, ${remaining} remaining, ${isAlive ? "alive" : "dead"}`;
+      const remaining = state.collectablesRemaining;
+      gameStateElement.textContent = `${state.collected} collected, ${remaining} remaining, ${state.gameState}`;
     }
 
     function handleInput(keyboardEvent) {
@@ -259,6 +260,7 @@
     buildButton.addEventListener("click", () => {
       buildButton.disabled = true;
       playButton.disabled = false;
+      resetButton.disabled = true;
       builderElement.hidden = false;
       gameStateElement.hidden = true;
 
@@ -274,9 +276,16 @@
       renderBoard(boardElement, board);
     });
 
+    resetButton.addEventListener("click", () => {
+      state.reset();
+      renderBoard(boardElement, board);
+      renderGameState(state);
+    });
+
     playButton.addEventListener("click", () => {
       buildButton.disabled = false;
       playButton.disabled = true;
+      resetButton.disabled = false;
       builderElement.hidden = true;
       gameStateElement.hidden = false;
       playButton.blur(); // Returns focus to the document
