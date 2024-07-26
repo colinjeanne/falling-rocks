@@ -6,10 +6,18 @@ import { decodeTile, encodeTile } from "./tile.js";
 
 export class Board {
   /** @type {Tile} */
-  static EMPTY_TILE = { type: "Empty", justUpdated: false };
+  static EMPTY_TILE = {
+    type: "Empty",
+    justUpdated: false,
+    conveyorDirection: "None",
+  };
 
   /** @type {Tile} */
-  static WALL_TILE = { type: "Wall", justUpdated: false };
+  static WALL_TILE = {
+    type: "Wall",
+    justUpdated: false,
+    conveyorDirection: "None",
+  };
 
   /**
    * @param {number} width

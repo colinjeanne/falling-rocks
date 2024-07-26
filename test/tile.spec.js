@@ -9,25 +9,169 @@ import { decodeTile, encodeTile } from "../src/tile.js"
 
 /** @type {[Tile, string][]} */
 const successCases = [
-  [{ type: "Collectable", justUpdated: false }, "C"],
-  [{ type: "Empty", justUpdated: false }, " "],
-  [{ type: "Wall", justUpdated: false }, "W"],
-  [{ type: "Dirt", flowDirection: "Both", justUpdated: false }, "D_"],
-  [{ type: "Dirt", flowDirection: "Down", justUpdated: false }, "Dv"],
-  [{ type: "Dirt", flowDirection: "Left", justUpdated: false }, "D<"],
-  [{ type: "Dirt", flowDirection: "None", justUpdated: false }, "D."],
-  [{ type: "Dirt", flowDirection: "Right", justUpdated: false }, "D>"],
-  [{ type: "Player", isAlive: true, justUpdated: false }, "Pa"],
-  [{ type: "Player", isAlive: false, justUpdated: false }, "Pd"],
-  [{ type: "Rock", fallingDirection: "Down", justUpdated: false }, "Rv"],
-  [{ type: "Rock", fallingDirection: "DownLeft", justUpdated: false }, "R<"],
-  [{ type: "Rock", fallingDirection: "DownRight", justUpdated: false }, "R>"],
-  [{ type: "Rock", fallingDirection: "None", justUpdated: false }, "R."],
-  [{ type: "Water", flowDirection: "All", justUpdated: false }, "~+"],
-  [{ type: "Water", flowDirection: "Both", justUpdated: false }, "~_"],
-  [{ type: "Water", flowDirection: "Down", justUpdated: false }, "~v"],
-  [{ type: "Water", flowDirection: "Left", justUpdated: false }, "~<"],
-  [{ type: "Water", flowDirection: "Right", justUpdated: false }, "~>"],
+  [
+    { type: "Collectable", conveyorDirection: "None", justUpdated: false },
+    "C",
+  ],
+  [{ type: "Empty", conveyorDirection: "None", justUpdated: false }, " "],
+  [{ type: "Empty", conveyorDirection: "Down", justUpdated: false }, " v"],
+  [{ type: "Empty", conveyorDirection: "Left", justUpdated: false }, " <"],
+  [{ type: "Empty", conveyorDirection: "Right", justUpdated: false }, " >"],
+  [{ type: "Empty", conveyorDirection: "Up", justUpdated: false }, " ^"],
+  [{ type: "Wall", conveyorDirection: "None", justUpdated: false }, "W"],
+  [
+    {
+      type: "Dirt",
+      conveyorDirection: "None",
+      flowDirection: "Both",
+      justUpdated: false,
+    },
+    "D_",
+  ],
+  [
+    {
+      type: "Dirt",
+      conveyorDirection: "None",
+      flowDirection: "Down",
+      justUpdated: false,
+    },
+    "Dv",
+  ],
+  [
+    {
+      type: "Dirt",
+      conveyorDirection: "None",
+      flowDirection: "Left",
+      justUpdated: false,
+    },
+    "D<",
+  ],
+  [
+    {
+      type: "Dirt",
+      conveyorDirection: "None",
+      flowDirection: "None",
+      justUpdated: false,
+    },
+    "D.",
+  ],
+  [
+    {
+      type: "Dirt",
+      conveyorDirection: "Down",
+      flowDirection: "None",
+      justUpdated: false,
+    },
+    "D.v",
+  ],
+  [
+    {
+      type: "Dirt",
+      conveyorDirection: "None",
+      flowDirection: "Right",
+      justUpdated: false,
+    },
+    "D>",
+  ],
+  [
+    {
+      type: "Player",
+      conveyorDirection: "None",
+      isAlive: true,
+      justUpdated: false,
+    },
+    "Pa",
+  ],
+  [
+    {
+      type: "Player",
+      conveyorDirection: "None",
+      isAlive: false,
+      justUpdated: false,
+    },
+    "Pd",
+  ],
+  [
+    {
+      type: "Rock",
+      conveyorDirection: "None",
+      fallingDirection: "Down",
+      justUpdated: false,
+    },
+    "Rv",
+  ],
+  [
+    {
+      type: "Rock",
+      conveyorDirection: "None",
+      fallingDirection: "DownLeft",
+      justUpdated: false,
+    },
+    "R<",
+  ],
+  [
+    {
+      type: "Rock",
+      conveyorDirection: "None",
+      fallingDirection: "DownRight",
+      justUpdated: false,
+    },
+    "R>",
+  ],
+  [
+    {
+      type: "Rock",
+      conveyorDirection: "None",
+      fallingDirection: "None",
+      justUpdated: false,
+    },
+    "R.",
+  ],
+  [
+    {
+      type: "Water",
+      conveyorDirection: "None",
+      flowDirection: "All",
+      justUpdated: false,
+    },
+    "~+",
+  ],
+  [
+    {
+      type: "Water",
+      conveyorDirection: "None",
+      flowDirection: "Both",
+      justUpdated: false,
+    },
+    "~_",
+  ],
+  [
+    {
+      type: "Water",
+      conveyorDirection: "None",
+      flowDirection: "Down",
+      justUpdated: false,
+    },
+    "~v",
+  ],
+  [
+    {
+      type: "Water",
+      conveyorDirection: "None",
+      flowDirection: "Left",
+      justUpdated: false,
+    },
+    "~<",
+  ],
+  [
+    {
+      type: "Water",
+      conveyorDirection: "None",
+      flowDirection: "Right",
+      justUpdated: false,
+    },
+    "~>",
+  ],
 ];
 
 describe("encodeTile", function () {

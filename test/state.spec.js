@@ -1160,4 +1160,480 @@ describe("applyPatternTileUpdates", function () {
 
     stabilizeState(state, intermediateBoards);
   });
+
+  it("conveys living players down", function () {
+    const board = [
+      ["Pav"],
+      [" "],
+      [" "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" v"],
+        ["Pa"],
+        [" "],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("conveys dead players down", function () {
+    const board = [
+      ["Pdv"],
+      [" "],
+      [" "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" v"],
+        ["Pd"],
+        [" "],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("down-conveyed die by crashing into players", function () {
+    const board = [
+      ["Pav"],
+      ["Pd"],
+      [" "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["Pdv"],
+        ["Pd"],
+        [" "],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("down-conveyed players kill living players", function () {
+    const board = [
+      ["Pav"],
+      ["Pa"],
+      [" "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["Pdv"],
+        ["Pd"],
+        [" "],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("conveys living players left", function () {
+    const board = [
+      [" ", " ", "Pa<"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" ", "Pa", " <"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("conveys dead players left", function () {
+    const board = [
+      [" ", " ", "Pd<"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" ", "Pd", " <"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("left-conveyed die by crashing into players", function () {
+    const board = [
+      [" ", "Pd", "Pa<"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" ", "Pd", "Pd<"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("left-conveyed players kill living players", function () {
+    const board = [
+      [" ", "Pa", "Pa<"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" ", "Pd", "Pd<"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("left-conveyed living players push single rocks", function () {
+    const board = [
+      [" ", " ", "R.", "Pa<"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" ", "R.", "Pa", " <"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("left-conveyed dead players push single rocks", function () {
+    const board = [
+      [" ", " ", "R.", "Pd<"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" ", "R.", "Pd", " <"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("left-conveyed players crash into double rocks rocks", function () {
+    const board = [
+      [" ", "R.", "R.", "Pa<"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" ", "R.", "R.", "Pd<"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("left-conveyed rocks kill players", function () {
+    const board = [
+      [" ", "Pa", "R.", "Pa<"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" ", "Pd", "R.", "Pd<"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("conveys living players right", function () {
+    const board = [
+      ["Pa>", " ", " "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" >", "Pa", " "],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("conveys dead players right", function () {
+    const board = [
+      ["Pd>", " ", " "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" >", "Pd", " "],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("right-conveyed die by crashing into players", function () {
+    const board = [
+      ["Pa>", "Pd", " "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["Pd>", "Pd", " "],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("right-conveyed players kill living players", function () {
+    const board = [
+      ["Pa>", "Pa", " "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["Pd>", "Pd", " "],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("right-conveyed living players push single rocks", function () {
+    const board = [
+      ["Pa>", "R.", " ", " "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" >", "Pa", "R.", " "],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("right-conveyed dead players push single rocks", function () {
+    const board = [
+      ["Pd>", "R.", " ", " "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" >", "Pd", "R.", " "],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("right-conveyed players crash into double rocks rocks", function () {
+    const board = [
+      ["Pa>", "R.", "R.", " "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["Pd>", "R.", "R.", " "],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("right-conveyed rocks kill players", function () {
+    const board = [
+      ["Pa>", "R.", "Pa", " "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["Pd>", "R.", "Pd", " "],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("conveys living players up", function () {
+    const board = [
+      [" "],
+      [" "],
+      ["Pa^"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" "],
+        ["Pa"],
+        [" ^"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("conveys dead players up", function () {
+    const board = [
+      [" "],
+      [" "],
+      ["Pd^"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" "],
+        ["Pd"],
+        [" ^"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("up-conveyed die by crashing into players", function () {
+    const board = [
+      [" "],
+      ["Pd"],
+      ["Pa^"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" "],
+        ["Pd"],
+        ["Pd^"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("up-conveyed players kill living players", function () {
+    const board = [
+      [" "],
+      ["Pa"],
+      ["Pa^"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" "],
+        ["Pd"],
+        ["Pd^"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("up-conveyed living players push single rocks", function () {
+    const board = [
+      [" "],
+      [" "],
+      ["R."],
+      ["Pa^"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" "],
+        ["R."],
+        ["Pa"],
+        [" ^"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("up-conveyed dead players push single rocks", function () {
+    const board = [
+      [" "],
+      [" "],
+      ["R."],
+      ["Pd^"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" "],
+        ["R."],
+        ["Pd"],
+        [" ^"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("up-conveyed players crash into double rocks rocks", function () {
+    const board = [
+      [" "],
+      ["R."],
+      ["R."],
+      ["Pa^"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" "],
+        ["R."],
+        ["R."],
+        ["Pd^"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("up-conveyed rocks kill players", function () {
+    const board = [
+      [" "],
+      ["Pa"],
+      ["R."],
+      ["Pa^"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" "],
+        ["Pd"],
+        ["R."],
+        ["Pd^"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
 });

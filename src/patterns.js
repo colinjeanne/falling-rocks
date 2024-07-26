@@ -1,4 +1,5 @@
 /**
+ * @typedef {import("./tile.js").ConveyorDirection} ConveyorDirection
  * @typedef {import("./tile.js").DirtTile} DirtTile
  * @typedef {import("./tile.js").FlowDirection} FlowDirection
  * @typedef {import("./tile.js").GenericTile} GenericTile
@@ -62,6 +63,13 @@ function isTile(patternTile) {
       return false;
     }
 
+    if (
+      patternTile.conveyorDirection &&
+      (tile.conveyorDirection !== patternTile.conveyorDirection)
+    ) {
+      return false;
+    }
+
     if (tile.type === "Water" && patternTile.type === "Water") {
       if (
         (patternTile.flowDirection !== undefined) &&
@@ -89,6 +97,32 @@ function isTile(patternTile) {
  */
 function wasJustUpdated(tile) {
   return tile.justUpdated;
+}
+
+/**
+ * Whether a tile behaves as if it were empty for a player
+ *
+ * @param {Tile} tile
+ */
+function isEmptyForPlayer(tile) {
+  return (
+    (tile.type === "Collectable") ||
+    (tile.type === "Empty") ||
+    (tile.type === "Dirt" && tile.flowDirection === "None")
+  );
+}
+
+/**
+ * Whether a tile is a player on a conveyor
+ *
+ * @param {ConveyorDirection} conveyorDirection
+ * @returns {Pattern}
+ */
+function isConveyoredPlayer(conveyorDirection) {
+  return and(
+    isTile({ type: "Player", conveyorDirection }),
+    not(wasJustUpdated)
+  );
 }
 
 /**
@@ -184,11 +218,11 @@ function isLivingPlayer(tile) {
 
 /**
  * @typedef {(
- *   Omit<DirtTile, "justUpdated"> |
- *   Omit<GenericTile, "justUpdated"> |
- *   Omit<PlayerTile, "justUpdated"> |
- *   Omit<RockTile, "justUpdated"> |
- *   Omit<WaterTile, "justUpdated"> |
+ *   Omit<DirtTile, "justUpdated" | "conveyorDirection"> |
+ *   Omit<GenericTile, "justUpdated" | "conveyorDirection"> |
+ *   Omit<PlayerTile, "justUpdated" | "conveyorDirection"> |
+ *   Omit<RockTile, "justUpdated" | "conveyorDirection"> |
+ *   Omit<WaterTile, "justUpdated" | "conveyorDirection"> |
  *   null
  * )} TileUpdate
  */
@@ -200,7 +234,11 @@ function isLivingPlayer(tile) {
  * @param {TileUpdate} tileUpdate
  */
 export function applyTileUpdate(tile, tileUpdate) {
-  return tileUpdate ? { ...tileUpdate, justUpdated: true } : tile;
+  return tileUpdate ? {
+    ...tileUpdate,
+    justUpdated: true,
+    conveyorDirection: tile.conveyorDirection
+  } : tile;
 }
 
 /**
@@ -218,6 +256,331 @@ export function applyTileUpdate(tile, tileUpdate) {
 
 /** @type {[PatternRegion, TileUpdateRegion][]} */
 export const patterns = [
+  // Down conveyors move living players down
+  [
+    [
+      any, any, any,
+      any, and(isLivingPlayer, isConveyoredPlayer("Down")), any,
+      any, isEmptyForPlayer, any,
+    ],
+    [
+      null, null, null,
+      null, { type: "Empty" }, null,
+      null, { type: "Player", isAlive: true }, null,
+    ],
+  ],
+  // Down conveyors move dead players down
+  [
+    [
+      any, any, any,
+      any, isConveyoredPlayer("Down"), any,
+      any, isEmptyForPlayer, any,
+    ],
+    [
+      null, null, null,
+      null, { type: "Empty" }, null,
+      null, { type: "Player", isAlive: false }, null,
+    ],
+  ],
+  // Down conveyored players kill other players
+  [
+    [
+      any, any, any,
+      any, isConveyoredPlayer("Down"), any,
+      any, and(isLivingPlayer, not(isConveyoredPlayer("Down"))), any,
+    ],
+    [
+      null, null, null,
+      null, { type: "Player", isAlive: false }, null,
+      null, { type: "Player", isAlive: false }, null,
+    ],
+  ],
+  // Down conveyored players crash
+  [
+    [
+      any, any, any,
+      any, and(isLivingPlayer, isConveyoredPlayer("Down")), any,
+      any, not(isEmptyForPlayer), any,
+    ],
+    [
+      null, null, null,
+      null, { type: "Player", isAlive: false }, null,
+      null, null, null,
+    ],
+  ],
+  // Left conveyors move living players left
+  [
+    [
+      any, any, any,
+      isEmptyForPlayer, and(isLivingPlayer, isConveyoredPlayer("Left")), any,
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      { type: "Player", isAlive: true }, { type: "Empty" }, null,
+      null, null, null,
+    ],
+  ],
+  // Left conveyors move dead players left
+  [
+    [
+      any, any, any,
+      isEmptyForPlayer, isConveyoredPlayer("Left"), any,
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      { type: "Player", isAlive: false }, { type: "Empty" }, null,
+      null, null, null,
+    ],
+  ],
+  // Left conveyored living players move rocks
+  [
+    [
+      any, any, any,
+      isEmptyForRock, isTile({ type: "Rock" }), and(isLivingPlayer, isConveyoredPlayer("Left")),
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      { type: "Rock", fallingDirection: "None" }, { type: "Player", isAlive: true }, { type: "Empty" },
+      null, null, null,
+    ],
+  ],
+  // Left conveyored dead players move rocks
+  [
+    [
+      any, any, any,
+      isEmptyForRock, isTile({ type: "Rock" }), isConveyoredPlayer("Left"),
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      { type: "Rock", fallingDirection: "None" }, { type: "Player", isAlive: false }, { type: "Empty" },
+      null, null, null,
+    ],
+  ],
+  // Left pushed rocks kill players
+  [
+    [
+      any, any, any,
+      isLivingPlayer, isTile({ type: "Rock" }), isConveyoredPlayer("Left"),
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      { type: "Player", isAlive: false }, null, { type: "Player", isAlive: false },
+      null, null, null,
+    ],
+  ],
+  // Left conveyored players kill other players
+  [
+    [
+      any, any, any,
+      and(isLivingPlayer, not(isConveyoredPlayer("Left"))), isConveyoredPlayer("Left"), any,
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      { type: "Player", isAlive: false }, { type: "Player", isAlive: false }, null,
+      null, null, null,
+    ],
+  ],
+  // Left conveyored players crash
+  [
+    [
+      any, any, any,
+      any, not(isEmptyForPlayer), and(isLivingPlayer, isConveyoredPlayer("Left")),
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      null, null, { type: "Player", isAlive: false },
+      null, null, null,
+    ],
+  ],
+  // Right conveyors move living players right
+  [
+    [
+      any, any, any,
+      any, and(isLivingPlayer, isConveyoredPlayer("Right")), isEmptyForPlayer,
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      null, { type: "Empty" }, { type: "Player", isAlive: true },
+      null, null, null,
+    ],
+  ],
+  // Right conveyors move dead players right
+  [
+    [
+      any, any, any,
+      any, isConveyoredPlayer("Right"), isEmptyForPlayer,
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      null, { type: "Empty" }, { type: "Player", isAlive: false },
+      null, null, null,
+    ],
+  ],
+  // Right conveyored living players move rocks
+  [
+    [
+      any, any, any,
+      and(isLivingPlayer, isConveyoredPlayer("Right")), isTile({ type: "Rock" }), isEmptyForRock,
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      { type: "Empty" }, { type: "Player", isAlive: true }, { type: "Rock", fallingDirection: "None" },
+      null, null, null,
+    ],
+  ],
+  // Right conveyored dead players move rocks
+  [
+    [
+      any, any, any,
+      isConveyoredPlayer("Right"), isTile({ type: "Rock" }), isEmptyForRock,
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      { type: "Empty" }, { type: "Player", isAlive: false }, { type: "Rock", fallingDirection: "None" },
+      null, null, null,
+    ],
+  ],
+  // Right pushed rocks kill players
+  [
+    [
+      any, any, any,
+      isConveyoredPlayer("Right"), isTile({ type: "Rock" }), isLivingPlayer,
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      { type: "Player", isAlive: false }, null, { type: "Player", isAlive: false },
+      null, null, null,
+    ],
+  ],
+  // Right conveyored players kill other players
+  [
+    [
+      any, any, any,
+      any, isConveyoredPlayer("Right"), and(isLivingPlayer, not(isConveyoredPlayer("Right"))),
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      null, { type: "Player", isAlive: false }, { type: "Player", isAlive: false },
+      null, null, null,
+    ],
+  ],
+  // Right conveyored players crash
+  [
+    [
+      any, any, any,
+      any, and(isLivingPlayer, isConveyoredPlayer("Right")), not(isEmptyForPlayer),
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      null, { type: "Player", isAlive: false }, null,
+      null, null, null,
+    ],
+  ],
+  // Up conveyors move living players up
+  [
+    [
+      any, isEmptyForPlayer, any,
+      any, and(isLivingPlayer, isConveyoredPlayer("Up")), any,
+      any, any, any,
+    ],
+    [
+      null, { type: "Player", isAlive: true }, null,
+      null, { type: "Empty" }, null,
+      null, null, null,
+    ],
+  ],
+  // Up conveyors move dead players up
+  [
+    [
+      any, isEmptyForPlayer, any,
+      any, isConveyoredPlayer("Up"), any,
+      any, any, any,
+    ],
+    [
+      null, { type: "Player", isAlive: false }, null,
+      null, { type: "Empty" }, null,
+      null, null, null,
+    ],
+  ],
+  // Up conveyored living players move rocks
+  [
+    [
+      any, isEmptyForRock, any,
+      any, isTile({ type: "Rock" }), any,
+      any, and(isLivingPlayer, isConveyoredPlayer("Up")), any,
+    ],
+    [
+      null, { type: "Rock", fallingDirection: "None" }, null,
+      null, { type: "Player", isAlive: true }, null,
+      null, { type: "Empty" }, null,
+    ],
+  ],
+  // Up conveyored dead players move rocks
+  [
+    [
+      any, isEmptyForRock, any,
+      any, isTile({ type: "Rock" }), any,
+      any, isConveyoredPlayer("Up"), any,
+    ],
+    [
+      null, { type: "Rock", fallingDirection: "None" }, null,
+      null, { type: "Player", isAlive: false }, null,
+      null, { type: "Empty" }, null,
+    ],
+  ],
+  // Up pushed rocks kill players
+  [
+    [
+      any, isLivingPlayer, any,
+      any, isTile({ type: "Rock" }), any,
+      any, isConveyoredPlayer("Up"), any,
+    ],
+    [
+      null, { type: "Player", isAlive: false }, null,
+      null, null, null,
+      null, { type: "Player", isAlive: false }, null,
+    ],
+  ],
+  // Up conveyored players kill other players
+  [
+    [
+      any, and(isLivingPlayer, not(isConveyoredPlayer("Up"))), any,
+      any, isConveyoredPlayer("Up"), any,
+      any, any, any,
+    ],
+    [
+      null, { type: "Player", isAlive: false }, null,
+      null, { type: "Player", isAlive: false }, null,
+      null, null, null,
+    ],
+  ],
+  // Up conveyored players crash
+  [
+    [
+      any, any, any,
+      any, not(isEmptyForPlayer), any,
+      any, and(isLivingPlayer, isConveyoredPlayer("Up")), any,
+    ],
+    [
+      null, null, null,
+      null, null, null,
+      null, { type: "Player", isAlive: false }, null,
+    ],
+  ],
   // Rocks fall down
   [
     [
