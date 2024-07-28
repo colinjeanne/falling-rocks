@@ -1,5 +1,5 @@
 /**
- * @typedef {import("./board.js").Tile} Tile
+ * @typedef {import("./tile.js").Tile} Tile
  *
  * @callback Pattern
  * @param {Tile} tile The tile to match
