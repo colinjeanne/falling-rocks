@@ -1,11 +1,11 @@
 /**
- * @typedef {import("./board.js").DirtTile} DirtTile
- * @typedef {import("./board.js").FlowDirection} FlowDirection
- * @typedef {import("./board.js").GenericTile} GenericTile
- * @typedef {import("./board.js").PlayerTile} PlayerTile
- * @typedef {import("./board.js").RockTile} RockTile
- * @typedef {import("./board.js").Tile} Tile
- * @typedef {import("./board.js").WaterTile} WaterTile
+ * @typedef {import("./tile.js").DirtTile} DirtTile
+ * @typedef {import("./tile.js").FlowDirection} FlowDirection
+ * @typedef {import("./tile.js").GenericTile} GenericTile
+ * @typedef {import("./tile.js").PlayerTile} PlayerTile
+ * @typedef {import("./tile.js").RockTile} RockTile
+ * @typedef {import("./tile.js").Tile} Tile
+ * @typedef {import("./tile.js").WaterTile} WaterTile
  * @typedef {import("./matcher.js").Pattern} Pattern
  */
 
@@ -64,13 +64,6 @@ function isTile(patternTile) {
 
     if (tile.type === "Water" && patternTile.type === "Water") {
       if (
-        (patternTile.isSource !== undefined) &&
-        (tile.isSource !== patternTile.isSource)
-      ) {
-        return false;
-      }
-
-      if (
         (patternTile.flowDirection !== undefined) &&
         (tile.flowDirection !== patternTile.flowDirection)
       ) {
@@ -126,7 +119,8 @@ function supportsFlowDirection(flowDirection) {
   return (tile) =>
     (
       (tile.type === "Water") && (
-        tile.isSource || (tile.flowDirection === flowDirection) ||
+        (tile.flowDirection === "All") ||
+        (tile.flowDirection === flowDirection) ||
         (tile.flowDirection === "Both")
       )
     ) || (
@@ -146,8 +140,7 @@ function supportsFlowDirection(flowDirection) {
 function isFlowingWater(flowDirection) {
   return (tile) =>
     (tile.type === "Water") &&
-    (tile.flowDirection === flowDirection) &&
-    !tile.isSource;
+    (tile.flowDirection === flowDirection);
 }
 
 /**
@@ -377,7 +370,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Water", isSource: false, flowDirection: "Down" }, null,
+      null, { type: "Water", flowDirection: "Down" }, null,
       null, null, null,
     ],
   ],
@@ -390,7 +383,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Water", isSource: false, flowDirection: "Both" }, null,
+      null, { type: "Water", flowDirection: "Both" }, null,
       null, null, null,
     ],
   ],
@@ -416,7 +409,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Water", isSource: false, flowDirection: "Both" }, null,
+      null, { type: "Water", flowDirection: "Both" }, null,
       null, null, null,
     ],
   ],
@@ -429,7 +422,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Water", isSource: false, flowDirection: "Down" }, null,
+      null, { type: "Water", flowDirection: "Down" }, null,
       null, null, null,
     ],
   ],
@@ -442,7 +435,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, null, { type: "Water", isSource: false, flowDirection: "Right" },
+      null, null, { type: "Water", flowDirection: "Right" },
       null, null, null,
     ],
   ],
@@ -468,7 +461,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Water", isSource: false, flowDirection: "Left" }, null,
+      null, { type: "Water", flowDirection: "Left" }, null,
       null, null, null,
     ],
   ],

@@ -1,61 +1,8 @@
-import * as Encoding from "./helpers/encoding.js";
-
-/** @enum {number} */
-const tileNames = {
-  Empty: 0,
-  Wall: 1,
-  Collectable: 2,
-  Rock: 3,
-  Dirt: 4,
-  Player: 5,
-  Water: 6,
-};
-
 /**
- * @typedef GenericTile
- * @property {"Empty" | "Wall" | "Collectable"} type
- * @property {boolean} justUpdated
- *
- * @typedef PlayerTile
- * @property {"Player"} type
- * @property {boolean} isAlive
- * @property {boolean} justUpdated
- *
- * @typedef {(
- *  "Up" |
- *  "Left" |
- *  "Down" |
- *  "Right" |
- *  "DownLeft" |
- *  "DownRight" |
- *  "None"
- * )} Direction
- *
- * @typedef RockTile
- * @property {"Rock"} type
- * @property {"Down" | "DownLeft" | "DownRight" | "None"} fallingDirection
- * @property {boolean} justUpdated
- *
- * @typedef {(
- *  "Down" |
- *  "Left" |
- *  "Right" |
- *  "Both"
- * )} FlowDirection
- *
- * @typedef WaterTile
- * @property {"Water"} type
- * @property {boolean} isSource
- * @property {FlowDirection} flowDirection
- * @property {boolean} justUpdated
- *
- * @typedef DirtTile
- * @property {"Dirt"} type
- * @property {FlowDirection | "None"} flowDirection
- * @property {boolean} justUpdated
- *
- * @typedef {DirtTile | GenericTile | PlayerTile | RockTile | WaterTile} Tile
+ * @typedef {import("./tile.js").Tile} Tile
  */
+
+import { decodeTile, encodeTile } from "./tile.js";
 
 export class Board {
   /** @type {Tile} */
@@ -70,6 +17,14 @@ export class Board {
    * @param {Tile[]} [tiles]
    */
   constructor(width, height, tiles) {
+    if ((width < 1) || width !== Math.floor(width)) {
+      throw new Error("Width must be a positive integer");
+    }
+
+    if ((height < 1) || (height !== Math.floor(height))) {
+      throw new Error("Height must be a positive integer");
+    }
+
     /** @type {number} */
     this.width = width;
 
@@ -77,20 +32,14 @@ export class Board {
     this.height = height;
 
     /** @type {Tile[]} */
-    this.tiles = []
+    this.tiles = [];
 
     if (tiles) {
       if (tiles.length !== width * height) {
-        throw new Error("Invalid board");
+        throw new Error("Size does not match number of tiles");
       }
 
-      this.tiles = tiles.map(tile => {
-        if (tile.type === "Player") {
-          return { ...tile, isAlive: true };
-        }
-
-        return tile;
-      });
+      this.tiles = tiles;
     } else {
       this.tiles = Array(width * height).fill(Board.EMPTY_TILE, 0);
     }
@@ -143,115 +92,124 @@ export class Board {
   }
 }
 
-const tileBits = Math.ceil(Math.log2(Object.values(tileNames).length));
-const runLengthBits = 7;
-const maxRunLength = 1 << runLengthBits;
+/**
+ * Performs a run-length encoding on the given array
+ *
+ * @template T
+ * @param {T[]} arr
+ */
+function encodeRle(arr) {
+  if (arr.length === 0) {
+    return [];
+  }
+
+  let count = 0;
+
+  let previousValue = arr[0];
+  return arr.reduce((/** @type [number, T][] */ encoded, value, index) => {
+    /** @type {[number, T][]} */
+    let addition = [];
+
+    if (value !== previousValue) {
+      addition.push([count, previousValue]);
+      count = 1;
+      previousValue = value;
+    } else {
+      ++count;
+    }
+
+    if (index === arr.length - 1) {
+      addition.push([count, previousValue]);
+    }
+
+    return [...encoded, ...addition];
+  }, []);
+}
 
 /**
- * Encodes a board as a Base-64 string
+ * Encodes a board as a string
  *
  * @param {Board} board
  */
-export function base64EncodeBoard(board) {
-  const bits = [
-    ...Encoding.encodeToBits(board.width, 6),
-    ...Encoding.encodeToBits(board.height, 6),
-  ];
-
-  const rleEncodedTiles = Encoding.encodeRle(board.tiles, maxRunLength);
-  for (const [runLength, tile] of rleEncodedTiles) {
-    bits.push(...Encoding.encodeToBits(runLength, runLengthBits));
-    bits.push(...Encoding.encodeToBits(tileNames[tile.type], tileBits));
-  }
-
-  return Encoding.base64EncodeBits(bits);
+export function encodeBoard(board) {
+  const tiles = board.tiles.map(encodeTile);
+  const rle = encodeRle(tiles).
+    map(([count, tile]) => `${count}${tile}`).join('');
+  return `${board.width};${board.height};${rle}`;
 }
 
 /**
- * Creates a generic version of the given tile
+ * Decodes a number from an array of characters
  *
- * @param {Tile["type"]} type
- * @returns {Tile}
+ * @param {string[]} chars
+ * @param {number} index The index in the array to decode from
+ * @returns {{ value: number, nextIndex: number }}
  */
-export function createTile(type) {
-  switch (type) {
-    case "Empty":
-    case "Wall":
-    case "Collectable":
-      return { type, justUpdated: false };
+function decodeInteger(chars, index) {
+  let value = 0;
 
-    case "Dirt":
-      return { type, flowDirection: "None", justUpdated: false };
-
-    case "Player":
-      return { type, isAlive: true, justUpdated: false };
-
-    case "Rock":
-      return { type, fallingDirection: "None", justUpdated: false };
-
-    case "Water":
-      return {
-        type,
-        isSource: true,
-        flowDirection: "Both",
-        justUpdated: false
-      };
+  let nextIndex = index;
+  for (
+    ;
+    nextIndex < chars.length && /\d/.test(chars[nextIndex]);
+    ++nextIndex
+  ) {
+    value = (value * 10) + Number.parseInt(chars[nextIndex]);
   }
+
+  if (nextIndex === index) {
+    throw new Error(`Expected number at ${index}`);
+  }
+
+  return { value, nextIndex };
 }
 
 /**
- * Creates a generic version of the given tile
+ * Decodes an RLE encoded set of tiles from an array of characters
  *
- * @param {number} tileValue
- * @returns {Tile}
+ * @param {string[]} chars
+ * @param {number} index The index in the array to decode from
+ * @returns {{ value: Tile[], nextIndex: number }}
  */
-function createTileFromTileValue(tileValue) {
-  for (const [type, value] of /** @type {[Tile["type"], number][]} */ (Object.entries(tileNames))) {
-    if (value === tileValue) {
-      return createTile(type);
-    }
+function decodeRleTiles(chars, index) {
+  const tiles = [];
+  let nextIndex = index;
+
+  while (nextIndex < chars.length) {
+    const count = decodeInteger(chars, nextIndex);
+    const tile = decodeTile(chars, count.nextIndex);
+    tiles.push(...Array(count.value).fill(tile.tile));
+
+    nextIndex = tile.nextIndex;
   }
 
-  throw new Error("Unknown tile");
+  return { value: tiles, nextIndex };
 }
 
 /**
- * Decodes a Base-64 string as a board
+ * Decodes a board
  *
  * @param {string} encoded
  */
-export function base64DecodeBoard(encoded) {
-  const bits = Encoding.decodeBase64ToBits(encoded);
+export function decodeBoard(encoded) {
+  const chars = [...encoded];
 
-  const width = Encoding.readBits(bits, 0, 6);
-  const height = Encoding.readBits(bits, 6, 6);
-  if (width === 0 || height === 0) {
-    throw new Error("Invalid board");
+  const decodedWidth = decodeInteger(chars, 0);
+  if (chars[decodedWidth.nextIndex] !== ";") {
+    throw new Error(`Expected separator at ${decodedWidth.nextIndex}`);
   }
 
-  /** @type {[number, number][]} */
-  const rleEncodedTiles = [];
-  let currentBit = 12;
-  while (currentBit + runLengthBits + tileBits <= bits.length) {
-    const runLength = Encoding.readBits(bits, currentBit, runLengthBits);
-    if (runLength === 0) {
-      throw new Error("Invalid board");
-    }
-
-    const tile = Encoding.readBits(bits, currentBit + runLengthBits, tileBits);
-    if (!Object.values(tileNames).includes(tile)) {
-      throw new Error("Invalid board");
-    }
-
-    rleEncodedTiles.push([runLength, tile]);
-
-    currentBit += (runLengthBits + tileBits);
+  const decodedHeight = decodeInteger(chars, decodedWidth.nextIndex + 1);
+  if (chars[decodedHeight.nextIndex] !== ";") {
+    throw new Error(`Expected separator at ${decodedHeight.nextIndex}`);
   }
 
-  const tiles = Encoding.decodeRle(rleEncodedTiles);
-  if (tiles.length !== width * height) {
-    throw new Error("Invalid board");
+  const decodedTiles = decodeRleTiles(chars, decodedHeight.nextIndex + 1);
+  if (decodedTiles.nextIndex !== chars.length) {
+    throw new Error(
+      `Unexpected character ${chars[decodedTiles.nextIndex]} at ${decodedTiles.nextIndex}`
+    );
   }
 
-  return new Board(width, height, tiles.map(createTileFromTileValue));
+  return new Board(decodedWidth.value, decodedHeight.value, decodedTiles.value);
 }

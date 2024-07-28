@@ -44,7 +44,7 @@
     </div>
   </body>
   <script type="module">
-    import { Board, base64EncodeBoard, base64DecodeBoard, createTile } from "./src/board.js";
+    import { Board, decodeBoard, encodeBoard } from "./src/board.js";
     import { State, applyPatternTileUpdates, movePlayer } from "./src/state.js";
 
     const tickMs = 250;
@@ -53,6 +53,9 @@
 
     function getFlowDirectionText(flowDirection) {
       switch (flowDirection) {
+        case "All":
+          return "+";
+
         case "Down":
           return "D";
 
@@ -81,9 +84,9 @@
         tileIndex = 3;
       } else if (tile.type === "Dirt") {
         tileIndex = 4;
-      } else if (tile.type === "Water" && tile.isSource) {
+      } else if (tile.type === "Water" && tile.flowDirection === "All") {
         tileIndex = 7;
-      } else if (tile.type === "Water" && !tile.isSource) {
+      } else if (tile.type === "Water" && tile.flowDirection !== "All") {
         tileIndex = 8;
       } else if (tile.type === "Player" && tile.isAlive) {
         tileIndex = 5;
@@ -142,6 +145,33 @@
       });
     }
 
+    /**
+     * Creates a generic version of the given tile
+     *
+     * @param {Tile["type"]} type
+     * @returns {Tile}
+     */
+    function createTile(type) {
+      switch (type) {
+        case "Empty":
+        case "Wall":
+        case "Collectable":
+          return { type, justUpdated: false };
+
+        case "Dirt":
+          return { type, flowDirection: "None", justUpdated: false };
+
+        case "Player":
+          return { type, isAlive: true, justUpdated: false };
+
+        case "Rock":
+          return { type, fallingDirection: "None", justUpdated: false };
+
+        case "Water":
+          return { type, flowDirection: "All", justUpdated: false };
+      }
+    }
+
     function updateTile(mouseEvent) {
       const tileWidth = boardElement.width / board.width;
       const tileHeight = boardElement.height / board.height;
@@ -154,7 +184,7 @@
 
       if (tile !== originalTile.type) {
         board.setTile(tileX, tileY, createTile(tile));
-        generatedBoardOutput.value = base64EncodeBoard(board);
+        generatedBoardOutput.value = encodeBoard(board);
         renderBoard(boardElement, board, [[tileX, tileY]]);
       }
     }
@@ -176,7 +206,7 @@
     let state;
 
     function updateUIWithBoard(board) {
-      generatedBoardOutput.value = base64EncodeBoard(board);
+      generatedBoardOutput.value = encodeBoard(board);
       boardElement.width = board.width * tileSize;
       boardElement.height = board.height * tileSize;
       widthInput.value = board.width;
@@ -316,9 +346,9 @@
     });
 
     loadBoard.addEventListener("click", () => {
-      const encoded = loadedBoard.value.trim();
+      const encoded = loadedBoard.value;
       try {
-        board = base64DecodeBoard(loadedBoard.value.trim());
+        board = decodeBoard(encoded);
         updateUIWithBoard(board);
       } catch (e) {
         console.log(e);

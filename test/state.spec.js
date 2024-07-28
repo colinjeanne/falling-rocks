@@ -1,44 +1,12 @@
 import * as assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { Board, createTile } from "../src/board.js"
+import { Board } from "../src/board.js"
+import { decodeTile, encodeTile } from "../src/tile.js";
 
 import { State, applyPatternTileUpdates } from "../src/state.js";
 
-/**
- * @typedef {import("../src/board.js").Tile} Tile
- */
-
-/**
- * @type {{
- *  [key: string]: Tile["type"]
- * }}
- */
-const tileMap = {
-  " ": "Empty",
-  "W": "Wall",
-  "C": "Collectable",
-  "R": "Rock",
-  "D": "Dirt",
-  "#": "Dirt",
-  "P": "Player",
-  "X": "Player",
-  "~": "Water"
-};
-
-/** @typedef {string[]} TestBoard */
-
-/**
- * Reverses the keys and values of an object
- *
- * @param {Object} o
- */
-function reverseObject(o) {
-  const entries = Object.entries(o);
-  return Object.fromEntries(entries.map(([key, value]) => ([value, key])));
-}
-
-const reverseTileMap = reverseObject(tileMap);
+/** @typedef {string[][]} TestBoard */
 
 /**
  * Generates a board from an array
@@ -49,8 +17,7 @@ function arrayToBoard(lines) {
   const width = lines[0].length;
   const height = lines.length;
   const tiles = lines.flatMap(
-    line => line.split('')
-      .map(tile => createTile(tileMap[/** @type {keyof tileMap} */(tile)]))
+    line => line.map(tile => decodeTile([...tile], 0).tile)
   );
 
   return new Board(width, height, tiles);
@@ -63,24 +30,7 @@ function boardToArray(board) {
   const lines = [];
   for (let i = 0; i < board.height; ++i) {
     const line = board.tiles.slice(i * board.width, (i + 1) * board.width)
-      .map(tile => {
-        if (tile.type === "Player") {
-          if (tile.isAlive) {
-            return "P";
-          } else {
-            return "X";
-          }
-        } else if (tile.type === "Dirt") {
-          if (tile.flowDirection === "None") {
-            return "D";
-          } else {
-            return "#";
-          }
-        }
-
-        return reverseTileMap[tile.type];
-      })
-      .join('');
+      .map(encodeTile);
     lines.push(line);
   }
   return lines;
@@ -132,27 +82,27 @@ function stabilizeState(state, intermediateBoards) {
 describe("applyPatternTileUpdates", function () {
   it("drops rocks straight down", function () {
     const board = [
-      "R",
-      " ",
-      " ",
+      ["R."],
+      [" "],
+      [" "],
     ];
     const state = new State(arrayToBoard(board));
 
     const intermediateBoards = [
       [
-        " ",
-        "R",
-        " ",
+        [" "],
+        ["Rv"],
+        [" "],
       ],
       [
-        " ",
-        " ",
-        "R",
+        [" "],
+        [" "],
+        ["Rv"],
       ],
       [
-        " ",
-        " ",
-        "R",
+        [" "],
+        [" "],
+        ["R."],
       ],
     ];
 
@@ -161,35 +111,35 @@ describe("applyPatternTileUpdates", function () {
 
   it("rocks don't fall with gaps", function () {
     const board = [
-      "R",
-      "R",
-      "R",
-      " ",
-      " ",
+      ["R."],
+      ["R."],
+      ["R."],
+      [" "],
+      [" "],
     ];
     const state = new State(arrayToBoard(board));
 
     const intermediateBoards = [
       [
-        " ",
-        "R",
-        "R",
-        "R",
-        " ",
+        [" "],
+        ["Rv"],
+        ["Rv"],
+        ["Rv"],
+        [" "],
       ],
       [
-        " ",
-        " ",
-        "R",
-        "R",
-        "R",
+        [" "],
+        [" "],
+        ["Rv"],
+        ["Rv"],
+        ["Rv"],
       ],
       [
-        " ",
-        " ",
-        "R",
-        "R",
-        "R",
+        [" "],
+        [" "],
+        ["R."],
+        ["R."],
+        ["R."],
       ],
     ];
 
@@ -198,27 +148,27 @@ describe("applyPatternTileUpdates", function () {
 
   it("collapses falling rocks to the right of rocks below", function () {
     const board = [
-      "R ",
-      "  ",
-      "R ",
+      ["R.", " "],
+      [" ", " "],
+      ["R.", " "],
     ];
     const state = new State(arrayToBoard(board));
 
     const intermediateBoards = [
       [
-        "  ",
-        "R ",
-        "R ",
+        [" ", " "],
+        ["Rv", " "],
+        ["R.", " "],
       ],
       [
-        "  ",
-        "  ",
-        "RR",
+        [" ", " "],
+        [" ", " "],
+        ["R.", "R>"],
       ],
       [
-        "  ",
-        "  ",
-        "RR",
+        [" ", " "],
+        [" ", " "],
+        ["R.", "R."],
       ],
     ];
 
@@ -227,27 +177,27 @@ describe("applyPatternTileUpdates", function () {
 
   it("collapses falling rocks to the left of rocks below", function () {
     const board = [
-      " R",
-      "  ",
-      " R",
+      [" ", "R."],
+      [" ", " "],
+      [" ", "R."],
     ];
     const state = new State(arrayToBoard(board));
 
     const intermediateBoards = [
       [
-        "  ",
-        " R",
-        " R",
+        [" ", " "],
+        [" ", "Rv"],
+        [" ", "R."],
       ],
       [
-        "  ",
-        "  ",
-        "RR",
+        [" ", " "],
+        [" ", " "],
+        ["R<", "R."],
       ],
       [
-        "  ",
-        "  ",
-        "RR",
+        [" ", " "],
+        [" ", " "],
+        ["R.", "R."],
       ],
     ];
 
@@ -256,37 +206,37 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures rocks falling to the left don't overlap rocks falling down", function () {
     const board = [
-      "RR",
-      "  ",
-      "R ",
-      "W ",
+      ["R.", "R."],
+      [" ", " "],
+      ["R.", " "],
+      ["W", " "],
     ];
     const state = new State(arrayToBoard(board));
 
     const intermediateBoards = [
       [
-        "  ",
-        "RR",
-        "R ",
-        "W ",
+        [" ", " "],
+        ["Rv", "Rv"],
+        ["R.", " "],
+        ["W", " "],
       ],
       [
-        "  ",
-        "R ",
-        "RR",
-        "W ",
+        [" ", " "],
+        ["R>", " "],
+        ["R.", "Rv"],
+        ["W", " "],
       ],
       [
-        "  ",
-        "  ",
-        "RR",
-        "WR",
+        [" ", " "],
+        [" ", " "],
+        ["R.", "R>"],
+        ["W", "Rv"],
       ],
       [
-        "  ",
-        "  ",
-        "RR",
-        "WR",
+        [" ", " "],
+        [" ", " "],
+        ["R.", "R."],
+        ["W", "R."],
       ],
     ];
 
@@ -295,37 +245,37 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures rocks falling to the right don't overlap rocks falling down", function () {
     const board = [
-      "RR",
-      "  ",
-      " R",
-      " W",
+      ["R.", "R."],
+      [" ", " "],
+      [" ", "R."],
+      [" ", "W"],
     ];
     const state = new State(arrayToBoard(board));
 
     const intermediateBoards = [
       [
-        "  ",
-        "RR",
-        " R",
-        " W",
+        [" ", " "],
+        ["Rv", "Rv"],
+        [" ", "R."],
+        [" ", "W"],
       ],
       [
-        "  ",
-        " R",
-        "RR",
-        " W",
+        [" ", " "],
+        [" ", "R<"],
+        ["Rv", "R."],
+        [" ", "W"],
       ],
       [
-        "  ",
-        "  ",
-        "RR",
-        "RW",
+        [" ", " "],
+        [" ", " "],
+        ["R<", "R."],
+        ["Rv", "W"],
       ],
       [
-        "  ",
-        "  ",
-        "RR",
-        "RW",
+        [" ", " "],
+        [" ", " "],
+        ["R.", "R."],
+        ["R.", "W"],
       ],
     ];
 
@@ -334,49 +284,49 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures rocks falling on both sides don't overlap with each other", function () {
     const board = [
-      "R R",
-      "   ",
-      "R R",
-      "W W",
-      "   ",
+      ["R.", " ", "R."],
+      [" ", " ", " "],
+      ["R.", " ", "R."],
+      ["W", " ", "W"],
+      [" ", " ", " "],
     ];
     const state = new State(arrayToBoard(board));
 
     const intermediateBoards = [
       [
-        "   ",
-        "R R",
-        "R R",
-        "W W",
-        "   ",
+        [" ", " ", " "],
+        ["Rv", " ", "Rv"],
+        ["R.", " ", "R."],
+        ["W", " ", "W"],
+        [" ", " ", " "],
       ],
       [
-        "   ",
-        "R  ",
-        "RRR",
-        "W W",
-        "   ",
+        [" ", " ", " "],
+        ["R>", " ", " "],
+        ["R.", "R<", "R."],
+        ["W", " ", "W"],
+        [" ", " ", " "],
       ],
       [
-        "   ",
-        "   ",
-        "RRR",
-        "WRW",
-        "   ",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["R.", "R>", "R."],
+        ["W", "Rv", "W"],
+        [" ", " ", " "],
       ],
       [
-        "   ",
-        "   ",
-        "R R",
-        "WRW",
-        " R ",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["R.", " ", "R."],
+        ["W", "Rv", "W"],
+        [" ", "Rv", " "],
       ],
       [
-        "   ",
-        "   ",
-        "R R",
-        "WRW",
-        " R ",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["R.", " ", "R."],
+        ["W", "Rv", "W"],
+        [" ", "R.", " "],
       ],
     ];
 
@@ -385,37 +335,37 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures rocks falling to the side don't block rocks falling from above", function () {
     const board = [
-      " R ",
-      " R ",
-      " R ",
-      "   ",
+      [" ", "R.", " "],
+      [" ", "R.", " "],
+      [" ", "R.", " "],
+      [" ", " ", " "],
     ];
     const state = new State(arrayToBoard(board));
 
     const intermediateBoards = [
       [
-        "   ",
-        " R ",
-        " R ",
-        " R ",
+        [" ", " ", " "],
+        [" ", "Rv", " "],
+        [" ", "Rv", " "],
+        [" ", "Rv", " "],
       ],
       [
-        "   ",
-        "   ",
-        " R ",
-        "RR ",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        [" ", "Rv", " "],
+        ["R<", "R.", " "],
       ],
       [
-        "   ",
-        "   ",
-        "   ",
-        "RRR",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["R.", "R.", "R>"],
       ],
       [
-        "   ",
-        "   ",
-        "   ",
-        "RRR",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["R.", "R.", "R."],
       ],
     ];
 
@@ -424,49 +374,49 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures rocks cascading to the left don't block other rocks cascading to the left", function () {
     const board = [
-      "RR ",
-      "   ",
-      "R  ",
-      "WR ",
-      " W ",
+      ["R.", "R.", " "],
+      [" ", " ", " "],
+      ["R.", " ", " "],
+      ["W", "R.", " "],
+      [" ", "W", " "],
     ];
     const state = new State(arrayToBoard(board));
 
     const intermediateBoards = [
       [
-        "   ",
-        "RR ",
-        "R  ",
-        "WR ",
-        " W ",
+        [" ", " ", " "],
+        ["Rv", "Rv", " "],
+        ["R.", " ", " "],
+        ["W", "R.", " "],
+        [" ", "W", " "],
       ],
       [
-        "   ",
-        "R  ",
-        "RR ",
-        "WR ",
-        " W ",
+        [" ", " ", " "],
+        ["R>", " ", " "],
+        ["R.", "Rv", " "],
+        ["W", "R.", " "],
+        [" ", "W", " "],
       ],
       [
-        "   ",
-        "   ",
-        "RR ",
-        "WRR",
-        " W ",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["R.", "R>", " "],
+        ["W", "R.", "R>"],
+        [" ", "W", " "],
       ],
       [
-        "   ",
-        "   ",
-        "R  ",
-        "WRR",
-        " WR",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["R.", " ", " "],
+        ["W", "R.", "R>"],
+        [" ", "W", "Rv"],
       ],
       [
-        "   ",
-        "   ",
-        "R  ",
-        "WRR",
-        " WR",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["R.", " ", " "],
+        ["W", "R.", "R."],
+        [" ", "W", "R."],
       ],
     ];
 
@@ -475,49 +425,49 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures rocks cascading to the right don't block other rocks cascading to the right", function () {
     const board = [
-      " RR",
-      "   ",
-      "  R",
-      " RW",
-      " W ",
+      [" ", "R.", "R."],
+      [" ", " ", " "],
+      [" ", " ", "R."],
+      [" ", "R.", "W"],
+      [" ", "W", " "],
     ];
     const state = new State(arrayToBoard(board));
 
     const intermediateBoards = [
       [
-        "   ",
-        " RR",
-        "  R",
-        " RW",
-        " W ",
+        [" ", " ", " "],
+        [" ", "Rv", "Rv"],
+        [" ", " ", "R."],
+        [" ", "R.", "W"],
+        [" ", "W", " "],
       ],
       [
-        "   ",
-        "  R",
-        " RR",
-        " RW",
-        " W ",
+        [" ", " ", " "],
+        [" ", " ", "R<"],
+        [" ", "Rv", "R."],
+        [" ", "R.", "W"],
+        [" ", "W", " "],
       ],
       [
-        "   ",
-        "   ",
-        " RR",
-        "RRW",
-        " W ",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        [" ", "R<", "R."],
+        ["R<", "R.", "W"],
+        [" ", "W", " "],
       ],
       [
-        "   ",
-        "   ",
-        "  R",
-        "RRW",
-        "RW ",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        [" ", " ", "R."],
+        ["R<", "R.", "W"],
+        ["Rv", "W", " "],
       ],
       [
-        "   ",
-        "   ",
-        "  R",
-        "RRW",
-        "RW ",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        [" ", " ", "R."],
+        ["R.", "R.", "W"],
+        ["R.", "W", " "],
       ],
     ];
 
@@ -526,87 +476,87 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures rocks always fall when nothing is below them", function () {
     const board = [
-      "  R ",
-      "R RR",
-      "RRRR",
-      "    ",
-      "  W ",
-      "    ",
-      "W   ",
-      "    ",
+      [" ", " ", "R.", " "],
+      ["R.", " ", "R.", "R."],
+      ["R.", "R.", "R.", "R."],
+      [" ", " ", " ", " "],
+      [" ", " ", "W", " "],
+      [" ", " ", " ", " "],
+      ["W", " ", " ", " "],
+      [" ", " ", " ", " "],
     ];
     const state = new State(arrayToBoard(board));
 
     const intermediateBoards = [
       [
-        "    ",
-        "  R ",
-        "R RR",
-        "RRRR",
-        "  W ",
-        "    ",
-        "W   ",
-        "    ",
+        [" ", " ", " ", " "],
+        [" ", " ", "Rv", " "],
+        ["Rv", " ", "Rv", "Rv"],
+        ["Rv", "Rv", "Rv", "Rv"],
+        [" ", " ", "W", " "],
+        [" ", " ", " ", " "],
+        ["W", " ", " ", " "],
+        [" ", " ", " ", " "],
       ],
       [
-        "    ",
-        "    ",
-        "  R ",
-        "RRRR",
-        "RRWR",
-        "    ",
-        "W   ",
-        "    ",
+        [" ", " ", " ", " "],
+        [" ", " ", " ", " "],
+        [" ", " ", "Rv", " "],
+        ["Rv", "R<", "Rv", "Rv"],
+        ["Rv", "Rv", "W", "Rv"],
+        [" ", " ", " ", " "],
+        ["W", " ", " ", " "],
+        [" ", " ", " ", " "],
       ],
       [
-        "    ",
-        "    ",
-        "    ",
-        " RR ",
-        "RRWR",
-        "RR R",
-        "W   ",
-        "    ",
+        [" ", " ", " ", " "],
+        [" ", " ", " ", " "],
+        [" ", " ", " ", " "],
+        [" ", "R<", "Rv", " "],
+        ["Rv", "Rv", "W", "Rv"],
+        ["Rv", "Rv", " ", "Rv"],
+        ["W", " ", " ", " "],
+        [" ", " ", " ", " "],
       ],
       [
-        "    ",
-        "    ",
-        "    ",
-        "    ",
-        "RRWR",
-        "RR R",
-        "WR R",
-        "    ",
+        [" ", " ", " ", " "],
+        [" ", " ", " ", " "],
+        [" ", " ", " ", " "],
+        [" ", " ", " ", " "],
+        ["R>", "Rv", "W", "R>"],
+        ["R.", "Rv", " ", "Rv"],
+        ["W", "Rv", " ", "Rv"],
+        [" ", " ", " ", " "],
       ],
       [
-        "    ",
-        "    ",
-        "    ",
-        "    ",
-        "R W ",
-        "RR R",
-        "WR R",
-        " R R",
+        [" ", " ", " ", " "],
+        [" ", " ", " ", " "],
+        [" ", " ", " ", " "],
+        [" ", " ", " ", " "],
+        ["R>", " ", "W", " "],
+        ["R.", "Rv", " ", "Rv"],
+        ["W", "Rv", " ", "Rv"],
+        [" ", "Rv", " ", "Rv"],
       ],
       [
-        "    ",
-        "    ",
-        "    ",
-        "    ",
-        "  W ",
-        "RR  ",
-        "WRRR",
-        " RRR",
+        [" ", " ", " ", " "],
+        [" ", " ", " ", " "],
+        [" ", " ", " ", " "],
+        [" ", " ", " ", " "],
+        [" ", " ", "W", " "],
+        ["R.", "R>", " ", " "],
+        ["W", "R>", "R>", "Rv"],
+        [" ", "R.", "R<", "R."],
       ],
       [
-        "    ",
-        "    ",
-        "    ",
-        "    ",
-        "  W ",
-        "RR  ",
-        "WRRR",
-        " RRR",
+        [" ", " ", " ", " "],
+        [" ", " ", " ", " "],
+        [" ", " ", " ", " "],
+        [" ", " ", " ", " "],
+        [" ", " ", "W", " "],
+        ["R.", "R.", " ", " "],
+        ["W", "R>", "R.", "R."],
+        [" ", "R.", "R.", "R."],
       ],
     ];
 
@@ -615,9 +565,9 @@ describe("applyPatternTileUpdates", function () {
 
   it("allows rocks to rest on a player", function () {
     const board = [
-      "R",
-      "P",
-      " ",
+      ["R."],
+      ["Pa"],
+      [" "],
     ];
     const state = new State(arrayToBoard(board));
 
@@ -629,23 +579,23 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures rocks falling down kill a player", function () {
     const board = [
-      "R",
-      " ",
-      "P",
+      ["R."],
+      [" "],
+      ["Pa"],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        " ",
-        "R",
-        "P",
+        [" "],
+        ["Rv"],
+        ["Pa"],
       ],
       [
-        " ",
-        "R",
-        "X",
+        [" "],
+        ["R."],
+        ["Pd"],
       ],
     ];
 
@@ -654,23 +604,23 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures rocks falling down left kill a player", function () {
     const board = [
-      " R",
-      "  ",
-      "PW",
+      [" ", "R."],
+      [" ", " "],
+      ["Pa", "W"],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        "  ",
-        " R",
-        "PW",
+        [" ", " "],
+        [" ", "Rv"],
+        ["Pa", "W"],
       ],
       [
-        "  ",
-        " R",
-        "XW",
+        [" ", " "],
+        [" ", "R."],
+        ["Pd", "W"],
       ],
     ];
 
@@ -679,23 +629,23 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures rocks falling down right kill a player", function () {
     const board = [
-      "R ",
-      "  ",
-      "WP",
+      ["R.", " "],
+      [" ", " "],
+      ["W", "Pa"],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        "  ",
-        "R ",
-        "WP",
+        [" ", " "],
+        ["Rv", " "],
+        ["W", "Pa"],
       ],
       [
-        "  ",
-        "R ",
-        "WX",
+        [" ", " "],
+        ["R.", " "],
+        ["W", "Pd"],
       ],
     ];
 
@@ -704,28 +654,28 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures water flows down", function () {
     const board = [
-      "~",
-      " ",
-      " ",
+      ["~+"],
+      [" "],
+      [" "],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        "~",
-        "~",
-        " ",
+        ["~+"],
+        ["~v"],
+        [" "],
       ],
       [
-        "~",
-        "~",
-        "~",
+        ["~+"],
+        ["~v"],
+        ["~v"],
       ],
       [
-        "~",
-        "~",
-        "~",
+        ["~+"],
+        ["~v"],
+        ["~_"],
       ],
     ];
 
@@ -734,28 +684,28 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures down-flowing water kills a player", function () {
     const board = [
-      "~",
-      " ",
-      "P",
+      ["~+"],
+      [" "],
+      ["Pa"],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        "~",
-        "~",
-        "P",
+        ["~+"],
+        ["~v"],
+        ["Pa"],
       ],
       [
-        "~",
-        "~",
-        "X",
+        ["~+"],
+        ["~v"],
+        ["Pd"],
       ],
       [
-        "~",
-        "~",
-        "X",
+        ["~+"],
+        ["~_"],
+        ["Pd"],
       ],
     ];
 
@@ -764,17 +714,17 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures water flows right", function () {
     const board = [
-      "~  ",
+      ["~+", " ", " "],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        "~~ ",
+        ["~+", "~>", " "],
       ],
       [
-        "~~~",
+        ["~+", "~>", "~>"],
       ],
     ];
 
@@ -783,17 +733,17 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures right-flowing water kills a player", function () {
     const board = [
-      "~ P",
+      ["~+", " ", "Pa"],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        "~~P",
+        ["~+", "~>", "Pa"],
       ],
       [
-        "~~X",
+        ["~+", "~>", "Pd"],
       ],
     ];
 
@@ -802,17 +752,17 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures water flows left", function () {
     const board = [
-      "  ~",
+      [" ", " ", "~+"],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        " ~~",
+        [" ", "~<", "~+"],
       ],
       [
-        "~~~",
+        ["~<", "~<", "~+"],
       ],
     ];
 
@@ -821,17 +771,17 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures left-flowing water kills a player", function () {
     const board = [
-      "P ~",
+      ["Pa", " ", "~+"],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        "P~~",
+        ["Pa", "~<", "~+"],
       ],
       [
-        "X~~",
+        ["Pd", "~<", "~+"],
       ],
     ];
 
@@ -840,38 +790,38 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures down- and both-flowing water dry without a down-flowing source", function () {
     const board = [
-      " R ",
-      "   ",
-      " ~ ",
-      " W ",
+      [" ", "R.", " "],
+      [" ", " ", " "],
+      [" ", "~+", " "],
+      [" ", "W", " "],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        "   ",
-        " R ",
-        "~~~",
-        " W ",
+        [" ", " ", " "],
+        [" ", "Rv", " "],
+        ["~<", "~+", "~>"],
+        [" ", "W", " "],
       ],
       [
-        "   ",
-        "   ",
-        "~R~",
-        "~W~",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["~<", "Rv", "~>"],
+        ["~v", "W", "~v"],
       ],
       [
-        "   ",
-        "   ",
-        "~  ",
-        "RW~",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["~<", " ", " "],
+        ["R<", "W", "~_"],
       ],
       [
-        "   ",
-        "   ",
-        "   ",
-        "RW ",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["R.", "W", " "],
       ],
     ];
 
@@ -880,33 +830,33 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures right-flowing water dries without a right-flowing source", function () {
     const board = [
-      "R  ",
-      "   ",
-      "~  ",
+      ["R.", " ", " "],
+      [" ", " ", " "],
+      ["~+", " ", " "],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        "   ",
-        "R  ",
-        "~~ ",
+        [" ", " ", " "],
+        ["Rv", " ", " "],
+        ["~+", "~>", " "],
       ],
       [
-        "   ",
-        "   ",
-        "R~~",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["Rv", "~>", "~>"],
       ],
       [
-        "   ",
-        "   ",
-        "R ~",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["R.", " ", "~>"],
       ],
       [
-        "   ",
-        "   ",
-        "R  ",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["R.", " ", " "],
       ],
     ];
 
@@ -915,38 +865,38 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures left-flowing water dries without a left-flowing source", function () {
     const board = [
-      "  R",
-      "   ",
-      "  ~",
+      [" ", " ", "R."],
+      [" ", " ", " "],
+      [" ", " ", "~+"],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        "   ",
-        "  R",
-        " ~~",
+        [" ", " ", " "],
+        [" ", " ", "Rv"],
+        [" ", "~<", "~+"],
       ],
       [
-        "   ",
-        "   ",
-        "~~R",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["~<", "~<", "Rv"],
       ],
       [
-        "   ",
-        "   ",
-        "~~R",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["~<", "~<", "R."],
       ],
       [
-        "   ",
-        "   ",
-        "~ R",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["~<", " ", "R."],
       ],
       [
-        "   ",
-        "   ",
-        "  R",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        [" ", " ", "R."],
       ],
     ];
 
@@ -955,28 +905,28 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures water from waterlogged dirt flows down", function () {
     const board = [
-      "~",
-      "D",
-      " ",
+      ["~+"],
+      ["D."],
+      [" "],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        "~",
-        "#",
-        " ",
+        ["~+"],
+        ["Dv"],
+        [" "],
       ],
       [
-        "~",
-        "#",
-        "~",
+        ["~+"],
+        ["Dv"],
+        ["~v"],
       ],
       [
-        "~",
-        "#",
-        "~",
+        ["~+"],
+        ["Dv"],
+        ["~_"],
       ],
     ];
 
@@ -985,23 +935,23 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures down-flowing water kills a player", function () {
     const board = [
-      "~",
-      "D",
-      "P",
+      ["~+"],
+      ["D."],
+      ["Pa"],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        "~",
-        "#",
-        "P",
+        ["~+"],
+        ["D_"],
+        ["Pa"],
       ],
       [
-        "~",
-        "#",
-        "X",
+        ["~+"],
+        ["D_"],
+        ["Pd"],
       ],
     ];
 
@@ -1010,17 +960,17 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures water flows right", function () {
     const board = [
-      "~D ",
+      ["~+", "D.", " "],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        "~# ",
+        ["~+", "D>", " "],
       ],
       [
-        "~#~",
+        ["~+", "D>", "~>"],
       ],
     ];
 
@@ -1029,17 +979,17 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures right-flowing water kills a player", function () {
     const board = [
-      "~DP",
+      ["~+", "D.", "Pa"],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        "~#P",
+        ["~+", "D>", "Pa"],
       ],
       [
-        "~#X",
+        ["~+", "D>", "Pd"],
       ],
     ];
 
@@ -1048,17 +998,17 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures water flows left", function () {
     const board = [
-      " D~",
+      [" ", "D.", "~+"],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        " #~",
+        [" ", "D<", "~+"],
       ],
       [
-        "~#~",
+        ["~<", "D<", "~+"],
       ],
     ];
 
@@ -1067,17 +1017,17 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures left-flowing water kills a player", function () {
     const board = [
-      "PD~",
+      ["Pa", "D.", "~+"],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        "P#~",
+        ["Pa", "D<", "~+"],
       ],
       [
-        "X#~",
+        ["Pd", "D<", "~+"],
       ],
     ];
 
@@ -1086,50 +1036,50 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures both-flowing water dry without a down-flowing source", function () {
     const board = [
-      " R ",
-      "   ",
-      " ~ ",
-      " D ",
-      " W ",
+      [" ", "R.", " "],
+      [" ", " ", " "],
+      [" ", "~+", " "],
+      [" ", "D.", " "],
+      [" ", "W", " "],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        "   ",
-        " R ",
-        " ~ ",
-        " # ",
-        " W ",
+        [" ", " ", " "],
+        [" ", "Rv", " "],
+        [" ", "~+", " "],
+        [" ", "D_", " "],
+        [" ", "W", " "],
       ],
       [
-        "   ",
-        "   ",
-        " R ",
-        "~#~",
-        " W ",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        [" ", "Rv", " "],
+        ["~<", "D_", "~>"],
+        [" ", "W", " "],
       ],
       [
-        "   ",
-        "   ",
-        "   ",
-        "RD~",
-        "~W~",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["R<", "D.", "~>"],
+        ["~v", "W", "~v"],
       ],
       [
-        "   ",
-        "   ",
-        "   ",
-        " D ",
-        "RW~",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        [" ", " ", " "],
+        [" ", "D.", " "],
+        ["Rv", "W", "~_"],
       ],
       [
-        "   ",
-        "   ",
-        "   ",
-        " D ",
-        "RW ",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        [" ", " ", " "],
+        [" ", "D.", " "],
+        ["R.", "W", " "],
       ],
     ];
 
@@ -1138,33 +1088,33 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures right-flowing water dries without a right-flowing source", function () {
     const board = [
-      "R  ",
-      "   ",
-      "~D ",
+      ["R.", " ", " "],
+      [" ", " ", " "],
+      ["~+", "D.", " "],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        "   ",
-        "R  ",
-        "~# ",
+        [" ", " ", " "],
+        ["Rv", " ", " "],
+        ["~+", "D>", " "],
       ],
       [
-        "   ",
-        "   ",
-        "R#~",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["Rv", "D>", "~>"],
       ],
       [
-        "   ",
-        "   ",
-        "RD~",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["R.", "D.", "~>"],
       ],
       [
-        "   ",
-        "   ",
-        "RD ",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["R.", "D.", " "],
       ],
     ];
 
@@ -1173,38 +1123,38 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures left-flowing water dries without a left-flowing source", function () {
     const board = [
-      "  R",
-      "   ",
-      " D~",
+      [" ", " ", "R."],
+      [" ", " ", " "],
+      [" ", "D.", "~+"],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        "   ",
-        "  R",
-        " #~",
+        [" ", " ", " "],
+        [" ", " ", "Rv"],
+        [" ", "D<", "~+"],
       ],
       [
-        "   ",
-        "   ",
-        "~#R",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["~<", "D<", "Rv"],
       ],
       [
-        "   ",
-        "   ",
-        "~#R",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["~<", "D<", "R."],
       ],
       [
-        "   ",
-        "   ",
-        "~DR",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        ["~<", "D.", "R."],
       ],
       [
-        "   ",
-        "   ",
-        " DR",
+        [" ", " ", " "],
+        [" ", " ", " "],
+        [" ", "D.", "R."],
       ],
     ];
 

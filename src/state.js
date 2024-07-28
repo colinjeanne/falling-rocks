@@ -3,9 +3,8 @@ import { matcher } from "./matcher.js";
 import { patterns, applyTileUpdate } from "./patterns.js";
 
 /**
- * @typedef {import("./board.js").Direction} Direction
- * @typedef {import("./board.js").FlowDirection} FlowDirection
- * @typedef {import("./board.js").Tile} Tile
+ * @typedef {import("./tile.js").Direction} Direction
+ * @typedef {import("./tile.js").Tile} Tile
  * @typedef {import("./patterns.js").TileUpdate} TileUpdate
  * @typedef {[number, number]} Point
  *
