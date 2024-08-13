@@ -1,12 +1,22 @@
 /**
+ * @typedef {(
+ *  "Down" |
+ *  "Left" |
+ *  "Right" |
+ *  "Up" |
+ *  "None"
+ * )} ConveyorDirection
+ *
  * @typedef GenericTile
  * @property {"Empty" | "Wall" | "Collectable"} type
  * @property {boolean} justUpdated
+ * @property {ConveyorDirection} conveyorDirection
  *
  * @typedef PlayerTile
  * @property {"Player"} type
  * @property {boolean} isAlive
  * @property {boolean} justUpdated
+ * @property {ConveyorDirection} conveyorDirection
  *
  * @typedef {(
  *  "Up" |
@@ -22,6 +32,7 @@
  * @property {"Rock"} type
  * @property {"Down" | "DownLeft" | "DownRight" | "None"} fallingDirection
  * @property {boolean} justUpdated
+ * @property {ConveyorDirection} conveyorDirection
  *
  * @typedef {(
  *  "Down" |
@@ -34,14 +45,98 @@
  * @property {"Water"} type
  * @property {FlowDirection | "All"} flowDirection
  * @property {boolean} justUpdated
+ * @property {ConveyorDirection} conveyorDirection
  *
  * @typedef DirtTile
  * @property {"Dirt"} type
  * @property {FlowDirection | "None"} flowDirection
  * @property {boolean} justUpdated
+ * @property {ConveyorDirection} conveyorDirection
  *
  * @typedef {DirtTile | GenericTile | PlayerTile | RockTile | WaterTile} Tile
  */
+
+/**
+ * Appends the conveyor direction to an encoded tile
+ *
+ * @param {ConveyorDirection} conveyorDirection
+ * @param {string} encoded
+ * @returns {string}
+ */
+function appendConveyorDirection(conveyorDirection, encoded) {
+  switch (conveyorDirection) {
+    case "Down":
+      return encoded + "v";
+
+    case "Left":
+      return encoded + "<";
+
+    case "None":
+      return encoded;
+
+    case "Right":
+      return encoded + ">";
+
+    case "Up":
+      return encoded + "^";
+  }
+}
+
+/**
+ * Decodes a conveyor direction from an array of characters
+ *
+ * @param {Omit<Tile, "conveyorDirection">} partialTile
+ * @param {string[]} chars
+ * @param {number} index The index in the array to decode from
+ * @returns {{ tile: Tile, nextIndex: number }}
+ */
+function decodeConveyorDirection(partialTile, chars, index) {
+  switch (chars[index]) {
+    case "v":
+      return {
+        tile: /** @type {Tile} */ ({
+          ...partialTile,
+          conveyorDirection: "Down",
+        }),
+        nextIndex: index + 1,
+      };
+
+    case "<":
+      return {
+        tile: /** @type {Tile} */ ({
+          ...partialTile,
+          conveyorDirection: "Left",
+        }),
+        nextIndex: index + 1,
+      };
+
+    case ">":
+      return {
+        tile: /** @type {Tile} */ ({
+          ...partialTile,
+          conveyorDirection: "Right",
+        }),
+        nextIndex: index + 1,
+      };
+
+    case "^":
+      return {
+        tile: /** @type {Tile} */ ({
+          ...partialTile,
+          conveyorDirection: "Up",
+        }),
+        nextIndex: index + 1,
+      };
+  }
+
+  return {
+    tile: /** @type {Tile} */ ({
+      ...partialTile,
+      conveyorDirection: "None",
+    }),
+    nextIndex: index,
+  };
+}
 
 /**
  * Encodes a generic tile
@@ -67,10 +162,10 @@ function encodeGenericTile(tile) {
  *
  * @param {string[]} chars
  * @param {number} index The index in the array to decode from
- * @returns {{ tile: GenericTile, nextIndex: number }}
+ * @returns {{ tile: Omit<GenericTile, "conveyorDirection">, nextIndex: number }}
  */
 function decodeGenericTile(chars, index) {
-  /** @type {GenericTile} */
+  /** @type {Omit<GenericTile, "conveyorDirection">} */
   let tile;
   switch (chars[index]) {
     case "C":
@@ -122,12 +217,12 @@ function encodeDirtTile(tile) {
  *
  * @param {string[]} chars
  * @param {number} index The index in the array to decode from
- * @returns {{ tile: DirtTile, nextIndex: number }}
+ * @returns {{ tile: Omit<DirtTile, "conveyorDirection">, nextIndex: number }}
  */
 function decodeDirtTile(chars, index) {
   const flowDirection = chars[index + 1];
 
-  /** @type {DirtTile} */
+  /** @type {Omit<DirtTile, "conveyorDirection">} */
   let tile;
   switch (flowDirection) {
     case "_":
@@ -174,12 +269,12 @@ function encodePlayerTile(tile) {
  *
  * @param {string[]} chars
  * @param {number} index The index in the array to decode from
- * @returns {{ tile: PlayerTile, nextIndex: number }}
+ * @returns {{ tile: Omit<PlayerTile, "conveyorDirection">, nextIndex: number }}
  */
 function decodePlayerTile(chars, index) {
   const status = chars[index + 1];
 
-  /** @type {PlayerTile} */
+  /** @type {Omit<PlayerTile, "conveyorDirection">} */
   let tile;
   switch (status) {
     case "a":
@@ -224,12 +319,12 @@ function encodeRockTile(tile) {
  *
  * @param {string[]} chars
  * @param {number} index The index in the array to decode from
- * @returns {{ tile: RockTile, nextIndex: number }}
+ * @returns {{ tile: Omit<RockTile, "conveyorDirection">, nextIndex: number }}
  */
 function decodeRockTile(chars, index) {
   const fallingDirection = chars[index + 1];
 
-  /** @type {RockTile} */
+  /** @type {Omit<RockTile, "conveyorDirection">} */
   let tile;
   switch (fallingDirection) {
     case "v":
@@ -295,12 +390,12 @@ function encodeWaterTile(tile) {
  *
  * @param {string[]} chars
  * @param {number} index The index in the array to decode from
- * @returns {{ tile: WaterTile, nextIndex: number }}
+ * @returns {{ tile: Omit<WaterTile, "conveyorDirection">, nextIndex: number }}
  */
 function decodeWaterTile(chars, index) {
   const flowDirection = chars[index + 1];
 
-  /** @type {WaterTile} */
+  /** @type {Omit<WaterTile, "conveyorDirection">} */
   let tile;
   switch (flowDirection) {
     case "+":
@@ -339,24 +434,32 @@ function decodeWaterTile(chars, index) {
  * @returns {string}
  */
 export function encodeTile(tile) {
+  let encoded;
   switch (tile.type) {
     case "Collectable":
     case "Empty":
     case "Wall":
-      return encodeGenericTile(tile);
+      encoded = encodeGenericTile(tile);
+      break;
 
     case "Dirt":
-      return encodeDirtTile(tile);
+      encoded = encodeDirtTile(tile);
+      break;
 
     case "Player":
-      return encodePlayerTile(tile);
+      encoded = encodePlayerTile(tile);
+      break;
 
     case "Rock":
-      return encodeRockTile(tile);
+      encoded = encodeRockTile(tile);
+      break;
 
     case "Water":
-      return encodeWaterTile(tile);
+      encoded = encodeWaterTile(tile);
+      break;
   }
+
+  return appendConveyorDirection(tile.conveyorDirection, encoded);
 }
 
 /**
@@ -367,24 +470,38 @@ export function encodeTile(tile) {
  * @returns {{ tile: Tile, nextIndex: number }}
  */
 export function decodeTile(chars, index) {
+  /** @type {{ tile: Omit<Tile, "conveyorDirection">, nextIndex: number }} */
+  let partialDecode;
   switch (chars[index]) {
     case "C":
     case "W":
     case " ":
-      return decodeGenericTile(chars, index);
+      partialDecode = decodeGenericTile(chars, index);
+      break;
 
     case "D":
-      return decodeDirtTile(chars, index);
+      partialDecode = decodeDirtTile(chars, index);
+      break;
 
     case "P":
-      return decodePlayerTile(chars, index);
+      partialDecode = decodePlayerTile(chars, index);
+      break;
 
     case "R":
-      return decodeRockTile(chars, index);
+      partialDecode = decodeRockTile(chars, index);
+      break;
 
     case "~":
-      return decodeWaterTile(chars, index);
+      partialDecode = decodeWaterTile(chars, index);
+      break;
+
+    default:
+      throw new Error(`Unexpected tile ${chars[index]} at ${index}`);
   }
 
-  throw new Error(`Unexpected tile ${chars[index]} at ${index}`);
+  return decodeConveyorDirection(
+    partialDecode.tile,
+    chars,
+    partialDecode.nextIndex
+  );
 }

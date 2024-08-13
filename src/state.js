@@ -4,6 +4,8 @@ import { patterns, applyTileUpdate } from "./patterns.js";
 
 /**
  * @typedef {import("./tile.js").Direction} Direction
+ * @typedef {import("./tile.js").PlayerTile} PlayerTile
+ * @typedef {import("./tile.js").RockTile} RockTile
  * @typedef {import("./tile.js").Tile} Tile
  * @typedef {import("./patterns.js").TileUpdate} TileUpdate
  * @typedef {[number, number]} Point
@@ -239,8 +241,23 @@ export function movePlayer(state, direction) {
         ++state.collected;
       }
 
-      state.setTile(x, y, Board.EMPTY_TILE);
-      state.setTile(newX, newY, playerTile);
+      /** @type {Tile} */
+      const newEmptyTile = {
+        type: "Empty",
+        justUpdated: false,
+        conveyorDirection: playerTile.conveyorDirection,
+      };
+
+      /** @type {PlayerTile} */
+      const newPlayerTile = {
+        type: "Player",
+        isAlive: true,
+        justUpdated: false,
+        conveyorDirection: tile.conveyorDirection,
+      };
+
+      state.setTile(x, y, newEmptyTile);
+      state.setTile(newX, newY, newPlayerTile);
 
       updatedPoints.push([x, y]);
       updatedPoints.push([newX, newY]);
@@ -251,7 +268,16 @@ export function movePlayer(state, direction) {
           newY,
           direction
         );
-        state.setTile(nextX, nextY, tile);
+        const nextTile = state.board.getTile(nextX, nextY);
+
+        /** @type {RockTile} */
+        const newRockTile = {
+          type: "Rock",
+          fallingDirection: "None",
+          justUpdated: false,
+          conveyorDirection: nextTile.conveyorDirection,
+        }
+        state.setTile(nextX, nextY, newRockTile);
         updatedPoints.push([nextX, nextY]);
       }
     }

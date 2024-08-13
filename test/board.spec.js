@@ -143,6 +143,34 @@ const successCases = [
     ),
     "2;2;1 1W2 ",
   ],
+  [
+    new Board(
+      2,
+      2,
+      [
+        { type: "Empty", conveyorDirection: "Right", justUpdated: false },
+        {
+          type: "Rock",
+          fallingDirection: "None",
+          conveyorDirection: "None",
+          justUpdated: false,
+        },
+        {
+          type: "Rock",
+          fallingDirection: "None",
+          conveyorDirection: "Down",
+          justUpdated: false,
+        },
+        {
+          type: "Rock",
+          fallingDirection: "Down",
+          conveyorDirection: "Down",
+          justUpdated: false,
+        },
+      ]
+    ),
+    "2;2;1 >1R.1R.v1Rvv",
+  ],
   [new Board(12, 24), "12;24;288 "],
 ];
 
@@ -173,6 +201,7 @@ describe("decodeBoard", function () {
     ["1;1;2 ", "Size does not match number of tiles"],
     ["1;1;1;", "Unexpected tile ; at 5"],
     ["1;1;1", "Unexpected tile undefined at 5"],
+    ["1;1;1 .", "Expected number at 6"],
   ];
 
   failureCases.forEach(([invalid, message]) => {

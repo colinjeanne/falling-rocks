@@ -23,6 +23,7 @@
           <input id="heightInput" type="number" min="1" max="64" value="10">
         </div>
         <div>
+          <label for="selectedTile">Tile</label>
           <select id="selectedTile">
             <option value="Empty" selected>Empty</option>
             <option value="Wall">Wall</option>
@@ -31,6 +32,14 @@
             <option value="Dirt">Dirt</option>
             <option value="Player">Player</option>
             <option value="Water">Water</option>
+          </select>
+          <label for="selectedConveyorDirection">Conveyor Direction</label>
+          <select id="selectedConveyorDirection">
+            <option value="None" selected>None</option>
+            <option value="Down">Down</option>
+            <option value="Left">Left</option>
+            <option value="Right">Right</option>
+            <option value="Up">Up</option>
           </select>
         </div>
         <div>
@@ -70,6 +79,39 @@
       }
     }
 
+    function drawArrow(context, x, y, width, height, direction) {
+      context.save();
+
+      context.translate(x + width / 2, y + height / 2);
+      switch (direction) {
+        case "Left":
+          context.rotate(Math.PI / 2);
+          break;
+
+        case "Right":
+          context.rotate(-Math.PI / 2);
+          break;
+
+        case "Up":
+          context.rotate(Math.PI);
+          break;
+      }
+      context.scale(0.75, 0.75);
+
+      context.lineWidth = 2;
+      context.strokeStyle = "grey";
+
+      context.beginPath();
+      context.moveTo(0, -height / 2);
+      context.lineTo(0, height / 2);
+      context.lineTo(-width / 2, 0);
+      context.moveTo(0, height / 2);
+      context.lineTo(width / 2, 0);
+      context.stroke();
+
+      context.restore();
+    }
+
     function drawTile(context, tile, x, y, width, height) {
       context.save();
 
@@ -107,6 +149,24 @@
         width,
         height
       );
+
+      switch (tile.conveyorDirection) {
+        case "Down":
+          drawArrow(context, x, y, width, height, "Down");
+          break;
+
+        case "Left":
+          drawArrow(context, x, y, width, height, "Left");
+          break;
+
+        case "Right":
+          drawArrow(context, x, y, width, height, "Right");
+          break;
+
+        case "Up":
+          drawArrow(context, x, y, width, height, "Up");
+          break;
+      }
 
       if (tile.type === "Water") {
         const text = getFlowDirectionText(tile.flowDirection);
@@ -156,19 +216,40 @@
         case "Empty":
         case "Wall":
         case "Collectable":
-          return { type, justUpdated: false };
+          return { type, justUpdated: false, conveyorDirection };
 
         case "Dirt":
-          return { type, flowDirection: "None", justUpdated: false };
+          return {
+            type,
+            flowDirection: "None",
+            justUpdated: false,
+            conveyorDirection,
+          };
 
         case "Player":
-          return { type, isAlive: true, justUpdated: false };
+          return {
+            type,
+            isAlive: true,
+            justUpdated: false,
+            conveyorDirection,
+          };
 
         case "Rock":
-          return { type, fallingDirection: "None", justUpdated: false };
+          return {
+            type,
+            fallingDirection: "None",
+            justUpdated: false,
+            conveyorDirection,
+          };
 
         case "Water":
-          return { type, flowDirection: "All", justUpdated: false };
+          return {
+            type,
+            isSource: true,
+            flowDirection: "Both",
+            justUpdated: false,
+            conveyorDirection,
+          };
       }
     }
 
@@ -182,8 +263,14 @@
       const tile = selectedTileInput.selectedOptions[0].value;
       const originalTile = board.getTile(tileX, tileY);
 
-      if (tile !== originalTile.type) {
-        board.setTile(tileX, tileY, createTile(tile));
+      const conveyorDirection =
+        selectedConveyorDirectionInput.selectedOptions[0].value;
+
+      if (
+        (tile !== originalTile.type) ||
+        (conveyorDirection !== originalTile.conveyorDirection)
+      ) {
+        board.setTile(tileX, tileY, createTile(tile, conveyorDirection));
         generatedBoardOutput.value = encodeBoard(board);
         renderBoard(boardElement, board, [[tileX, tileY]]);
       }
@@ -193,6 +280,8 @@
     const widthInput = document.getElementById("widthInput");
     const heightInput = document.getElementById("heightInput");
     const selectedTileInput = document.getElementById("selectedTile");
+    const selectedConveyorDirectionInput =
+      document.getElementById("selectedConveyorDirection");
     const generatedBoardOutput = document.getElementById("generatedBoard");
     const buildButton = document.getElementById("build");
     const playButton = document.getElementById("play");
