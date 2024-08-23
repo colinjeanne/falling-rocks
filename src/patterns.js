@@ -516,6 +516,19 @@ export const patterns = [
       null, null, null,
     ],
   ],
+  // Falling rocks kill up-conveyed players
+  [
+    [
+      any, isEmptyForRock, any,
+      any, isFallingRock, any,
+      any, and(isLivingPlayer, isConveyoredPlayer("Up")), any,
+    ],
+    [
+      null, { type: "Rock", fallingDirection: "None" }, null,
+      null, { type: "Player", isAlive: false }, null,
+      null, { type: "Empty" }, null,
+    ],
+  ],
   // Up conveyored living players move rocks
   [
     [
