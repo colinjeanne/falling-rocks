@@ -204,7 +204,7 @@ describe("applyPatternTileUpdates", function () {
     stabilizeState(state, intermediateBoards);
   });
 
-  it("ensures rocks falling to the left don't overlap rocks falling down", function () {
+  it("ensures falling rocks stop falling rocks from rolling right", function () {
     const board = [
       ["R.", "R."],
       [" ", " "],
@@ -222,20 +222,20 @@ describe("applyPatternTileUpdates", function () {
       ],
       [
         [" ", " "],
-        ["R>", " "],
+        ["R.", " "],
         ["R.", "Rv"],
         ["W", " "],
       ],
       [
         [" ", " "],
-        [" ", " "],
-        ["R.", "R>"],
+        ["R.", " "],
+        ["R.", " "],
         ["W", "Rv"],
       ],
       [
         [" ", " "],
-        [" ", " "],
-        ["R.", "R."],
+        ["R.", " "],
+        ["R.", " "],
         ["W", "R."],
       ],
     ];
@@ -243,7 +243,7 @@ describe("applyPatternTileUpdates", function () {
     stabilizeState(state, intermediateBoards);
   });
 
-  it("ensures rocks falling to the right don't overlap rocks falling down", function () {
+  it("ensures falling rocks stop falling rocks from rolling left", function () {
     const board = [
       ["R.", "R."],
       [" ", " "],
@@ -261,20 +261,20 @@ describe("applyPatternTileUpdates", function () {
       ],
       [
         [" ", " "],
-        [" ", "R<"],
+        [" ", "R."],
         ["Rv", "R."],
         [" ", "W"],
       ],
       [
         [" ", " "],
-        [" ", " "],
-        ["R<", "R."],
+        [" ", "R."],
+        [" ", "R."],
         ["Rv", "W"],
       ],
       [
         [" ", " "],
-        [" ", " "],
-        ["R.", "R."],
+        [" ", "R."],
+        [" ", "R."],
         ["R.", "W"],
       ],
     ];
@@ -302,30 +302,30 @@ describe("applyPatternTileUpdates", function () {
       ],
       [
         [" ", " ", " "],
-        ["R>", " ", " "],
+        ["R.", " ", " "],
         ["R.", "R<", "R."],
         ["W", " ", "W"],
         [" ", " ", " "],
       ],
       [
         [" ", " ", " "],
-        [" ", " ", " "],
-        ["R.", "R>", "R."],
+        ["R.", " ", " "],
+        ["R.", " ", "R."],
         ["W", "Rv", "W"],
         [" ", " ", " "],
       ],
       [
         [" ", " ", " "],
-        [" ", " ", " "],
+        ["R.", " ", " "],
         ["R.", " ", "R."],
-        ["W", "Rv", "W"],
+        ["W", " ", "W"],
         [" ", "Rv", " "],
       ],
       [
         [" ", " ", " "],
-        [" ", " ", " "],
+        ["R.", " ", " "],
         ["R.", " ", "R."],
-        ["W", "Rv", "W"],
+        ["W", " ", "W"],
         [" ", "R.", " "],
       ],
     ];
@@ -372,108 +372,6 @@ describe("applyPatternTileUpdates", function () {
     stabilizeState(state, intermediateBoards);
   });
 
-  it("ensures rocks cascading to the left don't block other rocks cascading to the left", function () {
-    const board = [
-      ["R.", "R.", " "],
-      [" ", " ", " "],
-      ["R.", " ", " "],
-      ["W", "R.", " "],
-      [" ", "W", " "],
-    ];
-    const state = new State(arrayToBoard(board));
-
-    const intermediateBoards = [
-      [
-        [" ", " ", " "],
-        ["Rv", "Rv", " "],
-        ["R.", " ", " "],
-        ["W", "R.", " "],
-        [" ", "W", " "],
-      ],
-      [
-        [" ", " ", " "],
-        ["R>", " ", " "],
-        ["R.", "Rv", " "],
-        ["W", "R.", " "],
-        [" ", "W", " "],
-      ],
-      [
-        [" ", " ", " "],
-        [" ", " ", " "],
-        ["R.", "R>", " "],
-        ["W", "R.", "R>"],
-        [" ", "W", " "],
-      ],
-      [
-        [" ", " ", " "],
-        [" ", " ", " "],
-        ["R.", " ", " "],
-        ["W", "R.", "R>"],
-        [" ", "W", "Rv"],
-      ],
-      [
-        [" ", " ", " "],
-        [" ", " ", " "],
-        ["R.", " ", " "],
-        ["W", "R.", "R."],
-        [" ", "W", "R."],
-      ],
-    ];
-
-    stabilizeState(state, intermediateBoards);
-  });
-
-  it("ensures rocks cascading to the right don't block other rocks cascading to the right", function () {
-    const board = [
-      [" ", "R.", "R."],
-      [" ", " ", " "],
-      [" ", " ", "R."],
-      [" ", "R.", "W"],
-      [" ", "W", " "],
-    ];
-    const state = new State(arrayToBoard(board));
-
-    const intermediateBoards = [
-      [
-        [" ", " ", " "],
-        [" ", "Rv", "Rv"],
-        [" ", " ", "R."],
-        [" ", "R.", "W"],
-        [" ", "W", " "],
-      ],
-      [
-        [" ", " ", " "],
-        [" ", " ", "R<"],
-        [" ", "Rv", "R."],
-        [" ", "R.", "W"],
-        [" ", "W", " "],
-      ],
-      [
-        [" ", " ", " "],
-        [" ", " ", " "],
-        [" ", "R<", "R."],
-        ["R<", "R.", "W"],
-        [" ", "W", " "],
-      ],
-      [
-        [" ", " ", " "],
-        [" ", " ", " "],
-        [" ", " ", "R."],
-        ["R<", "R.", "W"],
-        ["Rv", "W", " "],
-      ],
-      [
-        [" ", " ", " "],
-        [" ", " ", " "],
-        [" ", " ", "R."],
-        ["R.", "R.", "W"],
-        ["R.", "W", " "],
-      ],
-    ];
-
-    stabilizeState(state, intermediateBoards);
-  });
-
   it("ensures rocks always fall when nothing is below them", function () {
     const board = [
       [" ", " ", "R.", " "],
@@ -502,7 +400,7 @@ describe("applyPatternTileUpdates", function () {
         [" ", " ", " ", " "],
         [" ", " ", " ", " "],
         [" ", " ", "Rv", " "],
-        ["Rv", "R<", "Rv", "Rv"],
+        ["Rv", "R<", "R.", "Rv"],
         ["Rv", "Rv", "W", "Rv"],
         [" ", " ", " ", " "],
         ["W", " ", " ", " "],
@@ -512,7 +410,7 @@ describe("applyPatternTileUpdates", function () {
         [" ", " ", " ", " "],
         [" ", " ", " ", " "],
         [" ", " ", " ", " "],
-        [" ", "R<", "Rv", " "],
+        [" ", "R<", "R.", " "],
         ["Rv", "Rv", "W", "Rv"],
         ["Rv", "Rv", " ", "Rv"],
         ["W", " ", " ", " "],
@@ -522,8 +420,8 @@ describe("applyPatternTileUpdates", function () {
         [" ", " ", " ", " "],
         [" ", " ", " ", " "],
         [" ", " ", " ", " "],
-        [" ", " ", " ", " "],
-        ["R>", "Rv", "W", "R>"],
+        [" ", " ", "R.", " "],
+        ["R.", "Rv", "W", " "],
         ["R.", "Rv", " ", "Rv"],
         ["W", "Rv", " ", "Rv"],
         [" ", " ", " ", " "],
@@ -532,9 +430,9 @@ describe("applyPatternTileUpdates", function () {
         [" ", " ", " ", " "],
         [" ", " ", " ", " "],
         [" ", " ", " ", " "],
-        [" ", " ", " ", " "],
-        ["R>", " ", "W", " "],
-        ["R.", "Rv", " ", "Rv"],
+        [" ", " ", "R.", " "],
+        ["R.", " ", "W", " "],
+        ["R.", "Rv", " ", " "],
         ["W", "Rv", " ", "Rv"],
         [" ", "Rv", " ", "Rv"],
       ],
@@ -542,20 +440,20 @@ describe("applyPatternTileUpdates", function () {
         [" ", " ", " ", " "],
         [" ", " ", " ", " "],
         [" ", " ", " ", " "],
-        [" ", " ", " ", " "],
-        [" ", " ", "W", " "],
-        ["R.", "R>", " ", " "],
-        ["W", "R>", "R>", "Rv"],
+        [" ", " ", "R.", " "],
+        ["R.", " ", "W", " "],
+        ["R.", " ", " ", " "],
+        ["W", "R.", "R>", " "],
         [" ", "R.", "R<", "R."],
       ],
       [
         [" ", " ", " ", " "],
         [" ", " ", " ", " "],
         [" ", " ", " ", " "],
-        [" ", " ", " ", " "],
-        [" ", " ", "W", " "],
-        ["R.", "R.", " ", " "],
-        ["W", "R>", "R.", "R."],
+        [" ", " ", "R.", " "],
+        ["R.", " ", "W", " "],
+        ["R.", " ", " ", " "],
+        ["W", "R.", "R.", " "],
         [" ", "R.", "R.", "R."],
       ],
     ];

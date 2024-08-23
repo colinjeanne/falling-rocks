@@ -607,58 +607,6 @@ export const patterns = [
       null, { type: "Player", isAlive: false }, null,
     ],
   ],
-  // Rocks wait for other falling rocks to fall left off a rock below them
-  [
-    [
-      any, any, any,
-      isFallingRock, isFallingRock, any,
-      or(isEmptyForRock, isFallingRock), isTile({ type: "Rock" }), any,
-    ],
-    [
-      null, null, null,
-      null, { type: "Rock", fallingDirection: "DownLeft" }, null,
-      null, null, null,
-    ],
-  ],
-  // Rocks wait for other falling rocks to fall left off a rock below them
-  [
-    [
-      any, any, any,
-      any, isFallingRock, any,
-      isFallingRock, isTile({ type: "Rock" }), any,
-    ],
-    [
-      null, null, null,
-      null, { type: "Rock", fallingDirection: "DownLeft" }, null,
-      null, null, null,
-    ],
-  ],
-  // Rocks wait for other falling rocks to fall right off a rock below them
-  [
-    [
-      any, any, any,
-      not(isEmptyForRock), isFallingRock, isFallingRock,
-      any, isTile({ type: "Rock" }), or(isEmptyForRock, isFallingRock),
-    ],
-    [
-      null, null, null,
-      null, { type: "Rock", fallingDirection: "DownRight" }, null,
-      null, null, null,
-    ],
-  ],
-  // Rocks wait for other falling rocks to fall right off a rock below them
-  [
-    [
-      any, any, any,
-      not(isEmptyForRock), isFallingRock, any,
-      any, isTile({ type: "Rock" }), isFallingRock,
-    ],
-    [
-      null, null, null,
-      null, { type: "Rock", fallingDirection: "DownRight" }, null,
-      null, null, null,
-    ],
-  ],
   // Rocks fall left off a hard surface
   [
     [
@@ -716,7 +664,7 @@ export const patterns = [
     [
       any, any, any,
       any, isFallingRock, any,
-      not(isEmptyForRock), not(isEmptyForRock), not(isEmptyForRock),
+      any, any, any,
     ],
     [
       null, null, null,
