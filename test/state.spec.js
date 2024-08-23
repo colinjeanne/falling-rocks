@@ -1534,4 +1534,31 @@ describe("applyPatternTileUpdates", function () {
 
     stabilizeState(state, intermediateBoards);
   });
+
+  it("falling rocks kill up-conveyed players", function () {
+    const board = [
+      ["R."],
+      [" ^"],
+      [" ^"],
+      ["Pa^"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" "],
+        ["Rv^"],
+        ["Pa^"],
+        [" ^"],
+      ],
+      [
+        ["R."],
+        ["Pd^"],
+        [" ^"],
+        [" ^"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
 });
