@@ -54,7 +54,7 @@
   </body>
   <script type="module">
     import { Board, decodeBoard, encodeBoard } from "./src/board.js";
-    import { State, applyPatternTileUpdates, movePlayer } from "./src/state.js";
+    import { State, movePlayer } from "./src/state.js";
 
     const tickMs = 250;
     const tileSize = 20;
@@ -351,7 +351,7 @@
       }
 
       if (handled) {
-        updatedPoints.push(...applyPatternTileUpdates(state));
+        updatedPoints.push(...state.applyUpdates());
         renderBoard(boardElement, state.board, updatedPoints);
         renderGameState(state);
         keyboardEvent.preventDefault(); // Prevent other browser behaviors
@@ -424,7 +424,7 @@
       timerId = setInterval(
         () => {
           if (state.updatedTiles.length > 0) {
-            const updatedPoints = applyPatternTileUpdates(state);
+            const updatedPoints = state.applyUpdates();
             renderBoard(boardElement, state.board, updatedPoints);
             renderGameState(state);
           }

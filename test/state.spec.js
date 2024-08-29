@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 import { Board } from "../src/board.js"
 import { decodeTile, encodeTile } from "../src/tile.js";
 
-import { State, applyPatternTileUpdates } from "../src/state.js";
+import { State } from "../src/state.js";
 
 /** @typedef {string[][]} TestBoard */
 
@@ -49,7 +49,7 @@ function stabilizeState(state, intermediateBoards) {
   state.updateEntireBoard();
 
   while (state.updatedTiles.length > 0) {
-    applyPatternTileUpdates(state);
+    state.applyUpdates();
 
     if (currentIndex < intermediateBoards.length) {
       assert.deepStrictEqual(

@@ -1,4 +1,6 @@
 /**
+ * @typedef {import("./board.js").Board} Board
+ * @typedef {import("./board.js").Point} Point
  * @typedef {import("./tile.js").ConveyorDirection} ConveyorDirection
  * @typedef {import("./tile.js").DirtTile} DirtTile
  * @typedef {import("./tile.js").FlowDirection} FlowDirection
@@ -7,7 +9,10 @@
  * @typedef {import("./tile.js").RockTile} RockTile
  * @typedef {import("./tile.js").Tile} Tile
  * @typedef {import("./tile.js").WaterTile} WaterTile
- * @typedef {import("./matcher.js").Pattern} Pattern
+ *
+ * @callback Pattern
+ * @param {Tile} tile The tile to match
+ * @returns {boolean} Whether the pattern matches
  */
 
 /**
@@ -217,6 +222,16 @@ function isLivingPlayer(tile) {
 }
 
 /**
+ * @typedef {[
+ *   Tile, Tile, Tile,
+ *   Tile, Tile, Tile,
+ *   Tile, Tile, Tile
+ * ]} TileRegion
+ *
+ * @callback TileUpdateCallback
+ * @param {TileRegion} region The region that matched for this update
+ * @returns {Tile} The updated tile
+ *
  * @typedef {(
  *   Omit<DirtTile, "justUpdated" | "conveyorDirection"> |
  *   Omit<GenericTile, "justUpdated" | "conveyorDirection"> |
@@ -965,3 +980,120 @@ export const patterns = [
     ],
   ],
 ];
+
+/**
+ * Whether a region matches a given tile pattern
+ *
+ * @param {TileRegion} region
+ * @param {PatternRegion} pattern
+ */
+function matcher(region, pattern) {
+  for (let index = 0; index < region.length; ++index) {
+    if (!pattern[index](region[index])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Sorts the points from bottom right to top left
+ *
+ * @param {Point[]} points
+ */
+function reverseSortPoints(points) {
+  return [...points].sort((p1, p2) => {
+    if (p1[1] > p2[1]) {
+      return -1;
+    } else if (p1[1] < p2[1]) {
+      return 1;
+    } else if (p1[0] > p2[0]) {
+      return -1;
+    } else if (p1[0] < p2[0]) {
+      return 1;
+    }
+
+    return 0;
+  });
+}
+
+/**
+ * Gets the 3x3 region centered at a given point
+ *
+ * @param {Board} board
+ * @param {Point} pt
+ * @returns {TileRegion}
+ */
+function getPointCenteredRegion(board, pt) {
+  return [
+    board.getTile([pt[0] - 1, pt[1] - 1]),
+    board.getTile([pt[0], pt[1] - 1]),
+    board.getTile([pt[0] + 1, pt[1] - 1]),
+    board.getTile([pt[0] - 1, pt[1]]),
+    board.getTile([pt[0], pt[1]]),
+    board.getTile([pt[0] + 1, pt[1]]),
+    board.getTile([pt[0] - 1, pt[1] + 1]),
+    board.getTile([pt[0], pt[1] + 1]),
+    board.getTile([pt[0] + 1, pt[1] + 1]),
+  ];
+}
+
+/**
+ *
+ * @param {Board} board
+ * @param {Point} pt
+ * @param {TileUpdate[]} updates
+ */
+function applyRegionUpdates(board, pt, updates) {
+  /** @type {Point[]} */
+  const updatedPoints = [];
+
+  for (let y = -1; y < 2; ++y) {
+    for (let x = -1; x < 2; ++x) {
+      const update = updates[(x + 1) + 3 * (y + 1)];
+
+      /** @type {Point} */
+      const currentPoint = [pt[0] + x, pt[1] + y];
+
+      if (update) {
+        updatedPoints.push(currentPoint);
+
+        board.setTile(
+          currentPoint,
+          applyTileUpdate(
+            board.getTile(currentPoint),
+            update
+          )
+        );
+      }
+    }
+  }
+
+  return updatedPoints;
+}
+
+/**
+ * Applies updates to each tile that needs an update
+ *
+ * @param {Board} board
+ * @param {Point[]} pointsToUpdate
+ * @returns {Point[]} the points that were updated
+ */
+export function applyPatternTileUpdates(board, pointsToUpdate) {
+  const sortedUpdatedTiles = reverseSortPoints(pointsToUpdate);
+
+  /** @type {Point[]} */
+  const updatedPoints = [];
+  for (const point of sortedUpdatedTiles) {
+    const region = getPointCenteredRegion(board, point);
+    for (const [pattern, updates] of patterns) {
+      if (matcher(region, pattern)) {
+        updatedPoints.push(...applyRegionUpdates(board, point, updates));
+        break;
+      }
+    }
+  }
+
+  return updatedPoints;
+}
