@@ -77,9 +77,9 @@ describe("Board", function () {
     it("ensures a point is within bounds", function () {
       const board = new Board(2, 2);
 
-      assert.equal(board.isInBounds(1, 1), true);
-      assert.equal(board.isInBounds(2, 1), false);
-      assert.equal(board.isInBounds(1, -1), false);
+      assert.equal(board.isInBounds([1, 1]), true);
+      assert.equal(board.isInBounds([2, 1]), false);
+      assert.equal(board.isInBounds([1, -1]), false);
     });
   });
 
@@ -87,29 +87,29 @@ describe("Board", function () {
     it("gets a tile if the tile is in bounds", function () {
       const board = new Board(2, 2);
 
-      assert.equal(board.getTile(1, 1), Board.EMPTY_TILE);
+      assert.equal(board.getTile([1, 1]), Board.EMPTY_TILE);
     });
 
     it("gets a wall if the tile is out of bounds", function () {
       const board = new Board(2, 2);
 
-      assert.equal(board.getTile(2, 2), Board.WALL_TILE);
+      assert.equal(board.getTile([2, 2]), Board.WALL_TILE);
     });
   });
 
   describe("setTile", function () {
     it("sets a tile if it is in bounds", function () {
       const board = new Board(2, 2);
-      board.setTile(1, 1, Board.WALL_TILE);
+      board.setTile([1, 1], Board.WALL_TILE);
 
-      assert.equal(board.getTile(1, 1), Board.WALL_TILE);
+      assert.equal(board.getTile([1, 1]), Board.WALL_TILE);
     });
 
     it("throws if the tile is out of bounds", function () {
       const board = new Board(2, 2);
 
       assert.throws(
-        () => board.setTile(2, 2, Board.WALL_TILE),
+        () => board.setTile([2, 2], Board.WALL_TILE),
         /Coordinate \(2, 2\) out of bounds$/
       );
     });

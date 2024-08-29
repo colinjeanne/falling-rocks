@@ -1,5 +1,7 @@
 /**
  * @typedef {import("./tile.js").Tile} Tile
+ *
+ * @typedef {[number, number]} Point
  */
 
 import { decodeTile, encodeTile } from "./tile.js";
@@ -54,45 +56,43 @@ export class Board {
   }
 
   /**
-   * @param {number} x
-   * @param {number} y
+   * @param {Point} pt
    */
-  isInBounds(x, y) {
-    return x >= 0 && x < this.width && y >= 0 && y < this.height;
+  isInBounds(pt) {
+    return pt[0] >= 0 &&
+      pt[0] < this.width &&
+      pt[1] >= 0 &&
+      pt[1] < this.height;
   }
 
   /**
-   * @param {number} x
-   * @param {number} y
+   * @param {Point} pt
    */
-  #validateCoordinate(x, y) {
-    if (!this.isInBounds(x, y)) {
-      throw new Error(`Coordinate (${x}, ${y}) out of bounds`);
+  #validateCoordinate(pt) {
+    if (!this.isInBounds(pt)) {
+      throw new Error(`Coordinate (${pt[0]}, ${pt[1]}) out of bounds`);
     }
   }
 
   /**
-   * @param {number} x
-   * @param {number} y
+   * @param {Point} pt
    * @returns {Tile}
    */
-  getTile(x, y) {
-    if (this.isInBounds(x, y)) {
-      return this.tiles[x + y * this.width];
+  getTile(pt) {
+    if (this.isInBounds(pt)) {
+      return this.tiles[pt[0] + pt[1] * this.width];
     }
 
     return Board.WALL_TILE;
   }
 
   /**
-   *
-   * @param {number} x
-   * @param {number} y
+   * @param {Point} pt
    * @param {Tile} tile
    */
-  setTile(x, y, tile) {
-    this.#validateCoordinate(x, y);
-    this.tiles[x + y * this.width] = tile;
+  setTile(pt, tile) {
+    this.#validateCoordinate(pt);
+    this.tiles[pt[0] + pt[1] * this.width] = tile;
   }
 
   clone() {

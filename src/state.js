@@ -3,12 +3,12 @@ import { matcher } from "./matcher.js";
 import { patterns, applyTileUpdate } from "./patterns.js";
 
 /**
+ * @typedef {import("./board.js").Point} Point
  * @typedef {import("./tile.js").Direction} Direction
  * @typedef {import("./tile.js").PlayerTile} PlayerTile
  * @typedef {import("./tile.js").RockTile} RockTile
  * @typedef {import("./tile.js").Tile} Tile
  * @typedef {import("./patterns.js").TileUpdate} TileUpdate
- * @typedef {[number, number]} Point
  *
  * @typedef {"Lose" | "In Progress" | "Win"} GameState
  */
@@ -59,33 +59,33 @@ export class State {
   }
 
   /**
-   * @param {number} x
-   * @param {number} y
+   * @param {Point} pt
    * @param {Tile} tile
    */
-  setTile(x, y, tile) {
-    this.board.setTile(x, y, tile);
-    this.addUpdatedTile(x, y);
-    this.addUpdatedTile(x - 1, y);
-    this.addUpdatedTile(x - 1, y - 1);
-    this.addUpdatedTile(x - 1, y + 1);
-    this.addUpdatedTile(x + 1, y);
-    this.addUpdatedTile(x + 1, y - 1);
-    this.addUpdatedTile(x + 1, y + 1);
-    this.addUpdatedTile(x, y - 1);
-    this.addUpdatedTile(x, y + 1);
+  setTile(pt, tile) {
+    this.board.setTile(pt, tile);
+    this.addUpdatedTile(pt);
+    this.addUpdatedTile([pt[0] - 1, pt[1]]);
+    this.addUpdatedTile([pt[0] - 1, pt[1] - 1]);
+    this.addUpdatedTile([pt[0] - 1, pt[1] + 1]);
+    this.addUpdatedTile([pt[0] + 1, pt[1]]);
+    this.addUpdatedTile([pt[0] + 1, pt[1] - 1]);
+    this.addUpdatedTile([pt[0] + 1, pt[1] + 1]);
+    this.addUpdatedTile([pt[0], pt[1] - 1]);
+    this.addUpdatedTile([pt[0], pt[1] + 1]);
   }
 
   /**
-   * @param {number} x
-   * @param {number} y
+   * @param {Point} pt
    */
-  addUpdatedTile(x, y) {
+  addUpdatedTile(pt) {
     if (
-      this.board.isInBounds(x, y) &&
-      this.updatedTiles.every(point => point[0] !== x || point[1] !== y)
+      this.board.isInBounds(pt) &&
+      this.updatedTiles.every(
+        point => point[0] !== pt[0] || point[1] !== pt[1]
+      )
     ) {
-      this.updatedTiles.push([x, y]);
+      this.updatedTiles.push(pt);
     }
   }
 
@@ -102,7 +102,7 @@ export class State {
   clearJustUpdated() {
     for (let y = 0; y < this.board.height; ++y) {
       for (let x = 0; x < this.board.width; ++x) {
-        this.board.getTile(x, y).justUpdated = false;
+        this.board.getTile([x, y]).justUpdated = false;
       }
     }
   }
@@ -131,14 +131,13 @@ function canRockMoveThrough(tile) {
 /**
  * Gets the next point in a given direction
  *
- * @param {number} x
- * @param {number} y
+ * @param {Point} pt
  * @param {Direction} direction
  * @returns {Point}
  */
-function nextCoordinateInDirection(x, y, direction) {
-  let newX = x;
-  let newY = y;
+function nextCoordinateInDirection(pt, direction) {
+  let newX = pt[0];
+  let newY = pt[1];
 
   switch (direction) {
     case "Up":
@@ -175,12 +174,11 @@ function nextCoordinateInDirection(x, y, direction) {
  * Whether a player can move to the given location
  *
  * @param {Board} board
- * @param {number} x
- * @param {number} y
+ * @param {Point} pt
  * @param {Direction} direction
  */
-function canMoveToLocation(board, x, y, direction) {
-  const tile = board.getTile(x, y);
+function canMoveToLocation(board, pt, direction) {
+  const tile = board.getTile(pt);
   if (
     tile.type === "Wall" ||
     tile.type === "Player" ||
@@ -189,12 +187,12 @@ function canMoveToLocation(board, x, y, direction) {
   ) {
     return false;
   } else if (tile.type === "Rock") {
-    const [nextX, nextY] = nextCoordinateInDirection(x, y, direction);
-    if (!board.isInBounds(nextX, nextY)) {
+    const next = nextCoordinateInDirection(pt, direction);
+    if (!board.isInBounds(next)) {
       return false;
     }
 
-    const nextTile = board.getTile(nextX, nextY);
+    const nextTile = board.getTile(next);
     return nextTile.type !== "Player" && canRockMoveThrough(nextTile);
   }
 
@@ -214,29 +212,31 @@ export function movePlayer(state, direction) {
     filter(({ tile }) => tile.type === "Player" && tile.isAlive).
     map(({ tile, index }) => ({
       tile,
-      x: index % state.board.width,
-      y: Math.floor(index / state.board.width),
+      pt: /** @type {Point} */ ([
+        index % state.board.width,
+        Math.floor(index / state.board.width),
+      ]),
     }));
 
   playerPositions.sort((a, b) => {
     if (direction === "Up") {
-      return a.y - b.y;
+      return a.pt[1] - b.pt[1];
     } else if (direction === "Left") {
-      return a.x - b.x;
+      return a.pt[0] - b.pt[0];
     } else if (direction === "Down") {
-      return b.y - a.y;
+      return b.pt[1] - a.pt[1];
     }
 
-    return b.x - a.x;
+    return b.pt[0] - a.pt[0];
   });
 
   /** @type {Point[]} */
   const updatedPoints = [];
-  for (const { tile: playerTile, x, y } of playerPositions) {
-    const [newX, newY] = nextCoordinateInDirection(x, y, direction);
+  for (const { tile: playerTile, pt } of playerPositions) {
+    const newPoint = nextCoordinateInDirection(pt, direction);
 
-    if (canMoveToLocation(state.board, newX, newY, direction)) {
-      const tile = state.board.getTile(newX, newY);
+    if (canMoveToLocation(state.board, newPoint, direction)) {
+      const tile = state.board.getTile(newPoint);
       if (tile.type === "Collectable") {
         ++state.collected;
       }
@@ -256,19 +256,15 @@ export function movePlayer(state, direction) {
         conveyorDirection: tile.conveyorDirection,
       };
 
-      state.setTile(x, y, newEmptyTile);
-      state.setTile(newX, newY, newPlayerTile);
+      state.setTile(pt, newEmptyTile);
+      state.setTile(newPoint, newPlayerTile);
 
-      updatedPoints.push([x, y]);
-      updatedPoints.push([newX, newY]);
+      updatedPoints.push(pt);
+      updatedPoints.push(newPoint);
 
       if (tile.type === "Rock") {
-        const [nextX, nextY] = nextCoordinateInDirection(
-          newX,
-          newY,
-          direction
-        );
-        const nextTile = state.board.getTile(nextX, nextY);
+        const next = nextCoordinateInDirection(newPoint, direction);
+        const nextTile = state.board.getTile(next);
 
         /** @type {RockTile} */
         const newRockTile = {
@@ -277,8 +273,8 @@ export function movePlayer(state, direction) {
           justUpdated: false,
           conveyorDirection: nextTile.conveyorDirection,
         }
-        state.setTile(nextX, nextY, newRockTile);
-        updatedPoints.push([nextX, nextY]);
+        state.setTile(next, newRockTile);
+        updatedPoints.push(next);
       }
     }
   }
@@ -311,29 +307,29 @@ function reverseSortPoints(points) {
  * Gets the 3x3 region centered at a given point
  *
  * @param {Board} board
- * @param {Point} point
+ * @param {Point} pt
  */
-function getPointCenteredRegion(board, point) {
+function getPointCenteredRegion(board, pt) {
   return [
-    board.getTile(point[0] - 1, point[1] - 1),
-    board.getTile(point[0], point[1] - 1),
-    board.getTile(point[0] + 1, point[1] - 1),
-    board.getTile(point[0] - 1, point[1]),
-    board.getTile(point[0], point[1]),
-    board.getTile(point[0] + 1, point[1]),
-    board.getTile(point[0] - 1, point[1] + 1),
-    board.getTile(point[0], point[1] + 1),
-    board.getTile(point[0] + 1, point[1] + 1),
+    board.getTile([pt[0] - 1, pt[1] - 1]),
+    board.getTile([pt[0], pt[1] - 1]),
+    board.getTile([pt[0] + 1, pt[1] - 1]),
+    board.getTile([pt[0] - 1, pt[1]]),
+    board.getTile([pt[0], pt[1]]),
+    board.getTile([pt[0] + 1, pt[1]]),
+    board.getTile([pt[0] - 1, pt[1] + 1]),
+    board.getTile([pt[0], pt[1] + 1]),
+    board.getTile([pt[0] + 1, pt[1] + 1]),
   ];
 }
 
 /**
  *
  * @param {State} state
- * @param {Point} point
+ * @param {Point} pt
  * @param {TileUpdate[]} updates
  */
-function applyRegionUpdates(state, point, updates) {
+function applyRegionUpdates(state, pt, updates) {
   /** @type {Point[]} */
   const updatedPoints = [];
 
@@ -342,16 +338,15 @@ function applyRegionUpdates(state, point, updates) {
       const update = updates[(x + 1) + 3 * (y + 1)];
 
       /** @type {Point} */
-      const currentPoint = [point[0] + x, point[1] + y];
+      const currentPoint = [pt[0] + x, pt[1] + y];
 
       if (update) {
         updatedPoints.push(currentPoint);
 
         state.setTile(
-          currentPoint[0],
-          currentPoint[1],
+          currentPoint,
           applyTileUpdate(
-            state.board.getTile(currentPoint[0], currentPoint[1]),
+            state.board.getTile(currentPoint),
             update
           )
         );
