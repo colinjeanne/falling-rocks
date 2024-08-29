@@ -222,38 +222,99 @@ function isLivingPlayer(tile) {
 }
 
 /**
+ * @typedef {[0 | 1 | 2, 0 | 1 | 2]} RegionPoint
  * @typedef {[
  *   Tile, Tile, Tile,
  *   Tile, Tile, Tile,
  *   Tile, Tile, Tile
  * ]} TileRegion
  *
- * @callback TileUpdateCallback
- * @param {TileRegion} region The region that matched for this update
- * @returns {Tile} The updated tile
- *
  * @typedef {(
  *   Omit<DirtTile, "justUpdated" | "conveyorDirection"> |
  *   Omit<GenericTile, "justUpdated" | "conveyorDirection"> |
  *   Omit<PlayerTile, "justUpdated" | "conveyorDirection"> |
  *   Omit<RockTile, "justUpdated" | "conveyorDirection"> |
- *   Omit<WaterTile, "justUpdated" | "conveyorDirection"> |
- *   null
- * )} TileUpdate
+ *   Omit<WaterTile, "justUpdated" | "conveyorDirection">
+ * )} SimpleTile
+ *
+ * @callback TileUpdateCallback
+ * @param {TileRegion} region The region that matched for this update
+ * @returns {SimpleTile} The updated tile
+ *
+ * @typedef {TileUpdateCallback | null} TileUpdate
  */
 
 /**
- * Applies a tile update
+ * An empty tile after an update
  *
- * @param {Tile} tile
- * @param {TileUpdate} tileUpdate
+ * @returns {SimpleTile}
  */
-export function applyTileUpdate(tile, tileUpdate) {
-  return tileUpdate ? {
-    ...tileUpdate,
-    justUpdated: true,
-    conveyorDirection: tile.conveyorDirection
-  } : tile;
+function empty() {
+  return { type: "Empty" };
+}
+
+/**
+ * A dead player after an update
+ *
+ * @returns {SimpleTile}
+ */
+function deadPlayer() {
+  return { type: "Player", isAlive: false };
+}
+
+/**
+ * A player moved after an update
+ *
+ * @param {RegionPoint} originalLocation
+ * @returns {TileUpdateCallback}
+ */
+function movedPlayer(originalLocation) {
+  return (region) => {
+    const tile = region[originalLocation[0] + 3 * originalLocation[1]];
+    if (tile.type !== "Player") {
+      throw new Error(
+        `Expected player tile at (${originalLocation[0]}, ${originalLocation[1]}) but got ${tile.type}`
+      );
+    }
+
+    return { type: "Player", isAlive: tile.isAlive };
+  };
+}
+
+/**
+ * Dirt after an update
+ *
+ * @param {DirtTile["flowDirection"]} flowDirection
+ * @returns {TileUpdateCallback}
+ */
+function dirt(flowDirection) {
+  return () => {
+    return { type: "Dirt", flowDirection };
+  };
+}
+
+/**
+ * A rock after an update
+ *
+ * @param {RockTile["fallingDirection"]} fallingDirection
+ * @returns {TileUpdateCallback}
+ */
+function rock(fallingDirection) {
+  return () => {
+    return { type: "Rock", fallingDirection };
+  };
+}
+
+/**
+ * Water after an update
+ *
+ * @param {WaterTile["flowDirection"]} flowDirection
+ * @returns {TileUpdateCallback}
+ */
+function water(flowDirection) {
+  return () => {
+    return { type: "Water", flowDirection };
+  };
 }
 
 /**
@@ -271,20 +332,7 @@ export function applyTileUpdate(tile, tileUpdate) {
 
 /** @type {[PatternRegion, TileUpdateRegion][]} */
 export const patterns = [
-  // Down conveyors move living players down
-  [
-    [
-      any, any, any,
-      any, and(isLivingPlayer, isConveyoredPlayer("Down")), any,
-      any, isEmptyForPlayer, any,
-    ],
-    [
-      null, null, null,
-      null, { type: "Empty" }, null,
-      null, { type: "Player", isAlive: true }, null,
-    ],
-  ],
-  // Down conveyors move dead players down
+  // Down conveyors move players down
   [
     [
       any, any, any,
@@ -293,8 +341,8 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Empty" }, null,
-      null, { type: "Player", isAlive: false }, null,
+      null, empty, null,
+      null, movedPlayer([1, 1]), null,
     ],
   ],
   // Down conveyored players kill other players
@@ -306,8 +354,8 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Player", isAlive: false }, null,
-      null, { type: "Player", isAlive: false }, null,
+      null, deadPlayer, null,
+      null, deadPlayer, null,
     ],
   ],
   // Down conveyored players crash
@@ -319,24 +367,11 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Player", isAlive: false }, null,
+      null, deadPlayer, null,
       null, null, null,
     ],
   ],
-  // Left conveyors move living players left
-  [
-    [
-      any, any, any,
-      isEmptyForPlayer, and(isLivingPlayer, isConveyoredPlayer("Left")), any,
-      any, any, any,
-    ],
-    [
-      null, null, null,
-      { type: "Player", isAlive: true }, { type: "Empty" }, null,
-      null, null, null,
-    ],
-  ],
-  // Left conveyors move dead players left
+  // Left conveyors move players left
   [
     [
       any, any, any,
@@ -345,24 +380,11 @@ export const patterns = [
     ],
     [
       null, null, null,
-      { type: "Player", isAlive: false }, { type: "Empty" }, null,
+      movedPlayer([1, 1]), empty, null,
       null, null, null,
     ],
   ],
-  // Left conveyored living players move rocks
-  [
-    [
-      any, any, any,
-      isEmptyForRock, isTile({ type: "Rock" }), and(isLivingPlayer, isConveyoredPlayer("Left")),
-      any, any, any,
-    ],
-    [
-      null, null, null,
-      { type: "Rock", fallingDirection: "None" }, { type: "Player", isAlive: true }, { type: "Empty" },
-      null, null, null,
-    ],
-  ],
-  // Left conveyored dead players move rocks
+  // Left conveyored players move rocks
   [
     [
       any, any, any,
@@ -371,7 +393,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      { type: "Rock", fallingDirection: "None" }, { type: "Player", isAlive: false }, { type: "Empty" },
+      rock("None"), movedPlayer([2, 1]), empty,
       null, null, null,
     ],
   ],
@@ -384,7 +406,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      { type: "Player", isAlive: false }, null, { type: "Player", isAlive: false },
+      deadPlayer, null, deadPlayer,
       null, null, null,
     ],
   ],
@@ -397,7 +419,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      { type: "Player", isAlive: false }, { type: "Player", isAlive: false }, null,
+      deadPlayer, deadPlayer, null,
       null, null, null,
     ],
   ],
@@ -410,24 +432,11 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, null, { type: "Player", isAlive: false },
+      null, null, deadPlayer,
       null, null, null,
     ],
   ],
-  // Right conveyors move living players right
-  [
-    [
-      any, any, any,
-      any, and(isLivingPlayer, isConveyoredPlayer("Right")), isEmptyForPlayer,
-      any, any, any,
-    ],
-    [
-      null, null, null,
-      null, { type: "Empty" }, { type: "Player", isAlive: true },
-      null, null, null,
-    ],
-  ],
-  // Right conveyors move dead players right
+  // Right conveyors move players right
   [
     [
       any, any, any,
@@ -436,24 +445,11 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Empty" }, { type: "Player", isAlive: false },
+      null, empty, movedPlayer([1, 1]),
       null, null, null,
     ],
   ],
-  // Right conveyored living players move rocks
-  [
-    [
-      any, any, any,
-      and(isLivingPlayer, isConveyoredPlayer("Right")), isTile({ type: "Rock" }), isEmptyForRock,
-      any, any, any,
-    ],
-    [
-      null, null, null,
-      { type: "Empty" }, { type: "Player", isAlive: true }, { type: "Rock", fallingDirection: "None" },
-      null, null, null,
-    ],
-  ],
-  // Right conveyored dead players move rocks
+  // Right conveyored players move rocks
   [
     [
       any, any, any,
@@ -462,7 +458,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      { type: "Empty" }, { type: "Player", isAlive: false }, { type: "Rock", fallingDirection: "None" },
+      empty, movedPlayer([0, 1]), rock("None"),
       null, null, null,
     ],
   ],
@@ -475,7 +471,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      { type: "Player", isAlive: false }, null, { type: "Player", isAlive: false },
+      deadPlayer, null, deadPlayer,
       null, null, null,
     ],
   ],
@@ -488,7 +484,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Player", isAlive: false }, { type: "Player", isAlive: false },
+      null, deadPlayer, deadPlayer,
       null, null, null,
     ],
   ],
@@ -501,24 +497,11 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Player", isAlive: false }, null,
+      null, deadPlayer, null,
       null, null, null,
     ],
   ],
-  // Up conveyors move living players up
-  [
-    [
-      any, isEmptyForPlayer, any,
-      any, and(isLivingPlayer, isConveyoredPlayer("Up")), any,
-      any, any, any,
-    ],
-    [
-      null, { type: "Player", isAlive: true }, null,
-      null, { type: "Empty" }, null,
-      null, null, null,
-    ],
-  ],
-  // Up conveyors move dead players up
+  // Up conveyors move players up
   [
     [
       any, isEmptyForPlayer, any,
@@ -526,8 +509,8 @@ export const patterns = [
       any, any, any,
     ],
     [
-      null, { type: "Player", isAlive: false }, null,
-      null, { type: "Empty" }, null,
+      null, movedPlayer([1, 1]), null,
+      null, empty, null,
       null, null, null,
     ],
   ],
@@ -539,25 +522,12 @@ export const patterns = [
       any, and(isLivingPlayer, isConveyoredPlayer("Up")), any,
     ],
     [
-      null, { type: "Rock", fallingDirection: "None" }, null,
-      null, { type: "Player", isAlive: false }, null,
-      null, { type: "Empty" }, null,
+      null, rock("None"), null,
+      null, deadPlayer, null,
+      null, empty, null,
     ],
   ],
-  // Up conveyored living players move rocks
-  [
-    [
-      any, isEmptyForRock, any,
-      any, isTile({ type: "Rock" }), any,
-      any, and(isLivingPlayer, isConveyoredPlayer("Up")), any,
-    ],
-    [
-      null, { type: "Rock", fallingDirection: "None" }, null,
-      null, { type: "Player", isAlive: true }, null,
-      null, { type: "Empty" }, null,
-    ],
-  ],
-  // Up conveyored dead players move rocks
+  // Up conveyored players move rocks
   [
     [
       any, isEmptyForRock, any,
@@ -565,9 +535,9 @@ export const patterns = [
       any, isConveyoredPlayer("Up"), any,
     ],
     [
-      null, { type: "Rock", fallingDirection: "None" }, null,
-      null, { type: "Player", isAlive: false }, null,
-      null, { type: "Empty" }, null,
+      null, rock("None"), null,
+      null, movedPlayer([1, 2]), null,
+      null, empty, null,
     ],
   ],
   // Up pushed rocks kill players
@@ -578,9 +548,9 @@ export const patterns = [
       any, isConveyoredPlayer("Up"), any,
     ],
     [
-      null, { type: "Player", isAlive: false }, null,
+      null, deadPlayer, null,
       null, null, null,
-      null, { type: "Player", isAlive: false }, null,
+      null, deadPlayer, null,
     ],
   ],
   // Up conveyored players kill other players
@@ -591,8 +561,8 @@ export const patterns = [
       any, any, any,
     ],
     [
-      null, { type: "Player", isAlive: false }, null,
-      null, { type: "Player", isAlive: false }, null,
+      null, deadPlayer, null,
+      null, deadPlayer, null,
       null, null, null,
     ],
   ],
@@ -606,7 +576,7 @@ export const patterns = [
     [
       null, null, null,
       null, null, null,
-      null, { type: "Player", isAlive: false }, null,
+      null, deadPlayer, null,
     ],
   ],
   // Rocks fall down
@@ -618,8 +588,8 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Empty" }, null,
-      null, { type: "Rock", fallingDirection: "Down" }, null,
+      null, empty, null,
+      null, rock("Down"), null,
     ],
   ],
   // Rocks that fall down kill players and stop
@@ -631,8 +601,8 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Rock", fallingDirection: "None" }, null,
-      null, { type: "Player", isAlive: false }, null,
+      null, rock("None"), null,
+      null, deadPlayer, null,
     ],
   ],
   // Rocks fall left off a hard surface
@@ -644,8 +614,8 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Empty" }, null,
-      { type: "Rock", fallingDirection: "DownLeft" }, null, null,
+      null, empty, null,
+      rock("DownLeft"), null, null,
     ],
   ],
   // Rocks falling left kill a player and stop
@@ -657,8 +627,8 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Rock", fallingDirection: "None" }, null,
-      { type: "Player", isAlive: false }, null, null,
+      null, rock("None"), null,
+      deadPlayer, null, null,
     ],
   ],
   // Rocks fall right off a hard surface
@@ -670,8 +640,8 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Empty" }, null,
-      null, null, { type: "Rock", fallingDirection: "DownRight" },
+      null, empty, null,
+      null, null, rock("DownRight"),
     ],
   ],
   // Rocks falling right kill a player and stop
@@ -683,8 +653,8 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Rock", fallingDirection: "None" }, null,
-      null, null, { type: "Player", isAlive: false },
+      null, rock("None"), null,
+      null, null, deadPlayer,
     ],
   ],
   // Falling rocks stop if there is no where to fall
@@ -696,7 +666,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Rock", fallingDirection: "None" }, null,
+      null, rock("None"), null,
       null, null, null,
     ],
   ],
@@ -709,7 +679,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Water", flowDirection: "Down" }, null,
+      null, water("Down"), null,
       null, null, null,
     ],
   ],
@@ -722,7 +692,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Water", flowDirection: "Both" }, null,
+      null, water("Both"), null,
       null, null, null,
     ],
   ],
@@ -736,7 +706,7 @@ export const patterns = [
     [
       null, null, null,
       null, null, null,
-      null, { type: "Player", isAlive: false }, null,
+      null, deadPlayer, null,
     ],
   ],
   // Down-ward flowing water converts to both when a surface is below it
@@ -748,7 +718,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Water", flowDirection: "Both" }, null,
+      null, water("Both"), null,
       null, null, null,
     ],
   ],
@@ -761,7 +731,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Water", flowDirection: "Down" }, null,
+      null, water("Down"), null,
       null, null, null,
     ],
   ],
@@ -774,7 +744,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, null, { type: "Water", flowDirection: "Right" },
+      null, null, water("Right"),
       null, null, null,
     ],
   ],
@@ -787,7 +757,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, null, { type: "Player", isAlive: false },
+      null, null, deadPlayer,
       null, null, null,
     ],
   ],
@@ -800,7 +770,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Water", flowDirection: "Left" }, null,
+      null, water("Left"), null,
       null, null, null,
     ],
   ],
@@ -813,7 +783,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Player", isAlive: false }, null,
+      null, deadPlayer, null,
       null, null, null,
     ],
   ],
@@ -827,7 +797,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Empty" }, null,
+      null, empty, null,
       null, null, null,
     ],
   ],
@@ -841,7 +811,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Empty" }, null,
+      null, empty, null,
       null, null, null,
     ],
   ],
@@ -855,7 +825,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Empty" }, null,
+      null, empty, null,
       null, null, null,
     ],
   ],
@@ -868,7 +838,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Dirt", flowDirection: "Down" }, null,
+      null, dirt("Down"), null,
       null, null, null,
     ],
   ],
@@ -881,7 +851,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Dirt", flowDirection: "Both" }, null,
+      null, dirt("Both"), null,
       null, null, null,
     ],
   ],
@@ -894,7 +864,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Dirt", flowDirection: "Both" }, null,
+      null, dirt("Both"), null,
       null, null, null,
     ],
   ],
@@ -907,7 +877,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Dirt", flowDirection: "Down" }, null,
+      null, dirt("Down"), null,
       null, null, null,
     ],
   ],
@@ -920,7 +890,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, null, { type: "Dirt", flowDirection: "Right" },
+      null, null, dirt("Right"),
       null, null, null,
     ],
   ],
@@ -933,7 +903,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Dirt", flowDirection: "Left" }, null,
+      null, dirt("Left"), null,
       null, null, null,
     ],
   ],
@@ -947,7 +917,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Dirt", flowDirection: "None" }, null,
+      null, dirt("None"), null,
       null, null, null,
     ],
   ],
@@ -961,7 +931,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Dirt", flowDirection: "None" }, null,
+      null, dirt("None"), null,
       null, null, null,
     ],
   ],
@@ -975,7 +945,7 @@ export const patterns = [
     ],
     [
       null, null, null,
-      null, { type: "Dirt", flowDirection: "None" }, null,
+      null, dirt("None"), null,
       null, null, null,
     ],
   ],
@@ -1040,12 +1010,28 @@ function getPointCenteredRegion(board, pt) {
 }
 
 /**
+ * Applies a tile update
+ *
+ * @param {Tile} tile
+ * @param {TileRegion} region
+ * @param {TileUpdate} tileUpdate
+ */
+function applyTileUpdate(tile, region, tileUpdate) {
+  return tileUpdate ? {
+    ...tileUpdate(region),
+    justUpdated: true,
+    conveyorDirection: tile.conveyorDirection
+  } : tile;
+}
+
+/**
  *
  * @param {Board} board
  * @param {Point} pt
+ * @param {TileRegion} region
  * @param {TileUpdate[]} updates
  */
-function applyRegionUpdates(board, pt, updates) {
+function applyRegionUpdates(board, pt, region, updates) {
   /** @type {Point[]} */
   const updatedPoints = [];
 
@@ -1063,6 +1049,7 @@ function applyRegionUpdates(board, pt, updates) {
           currentPoint,
           applyTileUpdate(
             board.getTile(currentPoint),
+            region,
             update
           )
         );
@@ -1089,7 +1076,9 @@ export function applyPatternTileUpdates(board, pointsToUpdate) {
     const region = getPointCenteredRegion(board, point);
     for (const [pattern, updates] of patterns) {
       if (matcher(region, pattern)) {
-        updatedPoints.push(...applyRegionUpdates(board, point, updates));
+        updatedPoints.push(
+          ...applyRegionUpdates(board, point, region, updates)
+        );
         break;
       }
     }
