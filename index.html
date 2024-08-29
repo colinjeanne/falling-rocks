@@ -197,7 +197,7 @@
       const pointsWithTiles = updatedPoints.map(([x, y]) => ({
         x,
         y,
-        tile: board.getTile(x, y),
+        tile: board.getTile([x, y]),
       }));
 
       pointsWithTiles.forEach(({x, y, tile}) => {
@@ -209,9 +209,10 @@
      * Creates a generic version of the given tile
      *
      * @param {Tile["type"]} type
+     * @param {Tile["conveyorDirection"]} conveyorDirection
      * @returns {Tile}
      */
-    function createTile(type) {
+    function createTile(type, conveyorDirection) {
       switch (type) {
         case "Empty":
         case "Wall":
@@ -261,7 +262,7 @@
       const tileY = Math.floor(mouseEvent.offsetY / tileHeight);
 
       const tile = selectedTileInput.selectedOptions[0].value;
-      const originalTile = board.getTile(tileX, tileY);
+      const originalTile = board.getTile([tileX, tileY]);
 
       const conveyorDirection =
         selectedConveyorDirectionInput.selectedOptions[0].value;
@@ -270,7 +271,7 @@
         (tile !== originalTile.type) ||
         (conveyorDirection !== originalTile.conveyorDirection)
       ) {
-        board.setTile(tileX, tileY, createTile(tile, conveyorDirection));
+        board.setTile([tileX, tileY], createTile(tile, conveyorDirection));
         generatedBoardOutput.value = encodeBoard(board);
         renderBoard(boardElement, board, [[tileX, tileY]]);
       }
