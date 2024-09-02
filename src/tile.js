@@ -12,11 +12,22 @@
  * @property {boolean} justUpdated
  * @property {ConveyorDirection} conveyorDirection
  *
- * @typedef PlayerTile
+ * @typedef {ConveyorDirection} InputDirection
+ *
+ * @typedef LivingPlayerTile
  * @property {"Player"} type
- * @property {boolean} isAlive
+ * @property {true} isAlive
+ * @property {InputDirection} inputDirection
  * @property {boolean} justUpdated
  * @property {ConveyorDirection} conveyorDirection
+ *
+ * @typedef DeadPlayerTile
+ * @property {"Player"} type
+ * @property {false} isAlive
+ * @property {boolean} justUpdated
+ * @property {ConveyorDirection} conveyorDirection
+ *
+ * @typedef {DeadPlayerTile | LivingPlayerTile} PlayerTile
  *
  * @typedef {(
  *  "Up" |
@@ -129,6 +140,7 @@ function decodeConveyorDirection(partialTile, chars, index) {
       };
   }
 
+  // Assume any other character actually is part of another sequence
   return {
     tile: /** @type {Tile} */ ({
       ...partialTile,
@@ -261,7 +273,57 @@ function decodeDirtTile(chars, index) {
  * @returns {string}
  */
 function encodePlayerTile(tile) {
-  return tile.isAlive ? "Pa" : "Pd";
+  if (tile.isAlive) {
+    switch (tile.inputDirection) {
+      case "Down":
+        return "Pav";
+
+      case "Left":
+        return "Pa<";
+
+      case "None":
+        return "Pa.";
+
+      case "Right":
+        return "Pa>";
+
+      case "Up":
+        return "Pa^";
+    }
+  }
+
+  return "Pd";
+}
+
+/**
+ * Decodes an input direction from an array of characters
+ *
+ * @param {string[]} chars
+ * @param {number} index The index in the array to decode from
+ * @returns {InputDirection}}
+ */
+function decodeInputDirection(chars, index) {
+  switch (chars[index]) {
+    case "v":
+      return "Down";
+
+    case "<":
+      return "Left";
+
+    case ">":
+      return "Right";
+
+    case "^":
+      return "Up";
+
+    case ".":
+      return "None";
+
+    default:
+      throw new Error(
+        `Unexpected input direction ${chars[index]} at ${index}`
+      );
+  }
 }
 
 /**
@@ -274,22 +336,28 @@ function encodePlayerTile(tile) {
 function decodePlayerTile(chars, index) {
   const status = chars[index + 1];
 
-  /** @type {Omit<PlayerTile, "conveyorDirection">} */
-  let tile;
   switch (status) {
     case "a":
-      tile = { type: "Player", isAlive: true, justUpdated: false };
-      break;
+      const inputDirection = decodeInputDirection(chars, index + 2);
+      return {
+        tile: /** @type {Omit<LivingPlayerTile, "conveyorDirection">} */ ({
+          type: "Player",
+          isAlive: true,
+          inputDirection,
+          justUpdated: false,
+        }),
+        nextIndex: index + 3,
+      };
 
     case "d":
-      tile = { type: "Player", isAlive: false, justUpdated: false };
-      break;
+      return {
+        tile: { type: "Player", isAlive: false, justUpdated: false },
+        nextIndex: index + 2,
+      };
 
     default:
       throw new Error(`Unexpected player status ${status} at ${index + 1}`);
   }
-
-  return { tile, nextIndex: index + 2 };
 }
 
 /**
