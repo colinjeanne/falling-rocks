@@ -46,8 +46,6 @@ function stabilizeState(state, intermediateBoards) {
   const originalBoard = boardToArray(state.board);
 
   let currentIndex = 0;
-  state.updateEntireBoard();
-
   while (state.updatedTiles.length > 0) {
     state.applyUpdates();
 
@@ -464,7 +462,7 @@ describe("applyPatternTileUpdates", function () {
   it("allows rocks to rest on a player", function () {
     const board = [
       ["R."],
-      ["Pa"],
+      ["Pa."],
       [" "],
     ];
     const state = new State(arrayToBoard(board));
@@ -479,7 +477,7 @@ describe("applyPatternTileUpdates", function () {
     const board = [
       ["R."],
       [" "],
-      ["Pa"],
+      ["Pa."],
     ];
     const state = new State(arrayToBoard(board));
 
@@ -488,7 +486,7 @@ describe("applyPatternTileUpdates", function () {
       [
         [" "],
         ["Rv"],
-        ["Pa"],
+        ["Pa."],
       ],
       [
         [" "],
@@ -504,7 +502,7 @@ describe("applyPatternTileUpdates", function () {
     const board = [
       [" ", "R."],
       [" ", " "],
-      ["Pa", "W"],
+      ["Pa.", "W"],
     ];
     const state = new State(arrayToBoard(board));
 
@@ -513,7 +511,7 @@ describe("applyPatternTileUpdates", function () {
       [
         [" ", " "],
         [" ", "Rv"],
-        ["Pa", "W"],
+        ["Pa.", "W"],
       ],
       [
         [" ", " "],
@@ -529,7 +527,7 @@ describe("applyPatternTileUpdates", function () {
     const board = [
       ["R.", " "],
       [" ", " "],
-      ["W", "Pa"],
+      ["W", "Pa."],
     ];
     const state = new State(arrayToBoard(board));
 
@@ -538,7 +536,7 @@ describe("applyPatternTileUpdates", function () {
       [
         [" ", " "],
         ["Rv", " "],
-        ["W", "Pa"],
+        ["W", "Pa."],
       ],
       [
         [" ", " "],
@@ -584,7 +582,7 @@ describe("applyPatternTileUpdates", function () {
     const board = [
       ["~+"],
       [" "],
-      ["Pa"],
+      ["Pa."],
     ];
     const state = new State(arrayToBoard(board));
 
@@ -593,7 +591,7 @@ describe("applyPatternTileUpdates", function () {
       [
         ["~+"],
         ["~v"],
-        ["Pa"],
+        ["Pa."],
       ],
       [
         ["~+"],
@@ -631,14 +629,14 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures right-flowing water kills a player", function () {
     const board = [
-      ["~+", " ", "Pa"],
+      ["~+", " ", "Pa."],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        ["~+", "~>", "Pa"],
+        ["~+", "~>", "Pa."],
       ],
       [
         ["~+", "~>", "Pd"],
@@ -669,14 +667,14 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures left-flowing water kills a player", function () {
     const board = [
-      ["Pa", " ", "~+"],
+      ["Pa.", " ", "~+"],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        ["Pa", "~<", "~+"],
+        ["Pa.", "~<", "~+"],
       ],
       [
         ["Pd", "~<", "~+"],
@@ -835,7 +833,7 @@ describe("applyPatternTileUpdates", function () {
     const board = [
       ["~+"],
       ["D."],
-      ["Pa"],
+      ["Pa."],
     ];
     const state = new State(arrayToBoard(board));
 
@@ -844,7 +842,7 @@ describe("applyPatternTileUpdates", function () {
       [
         ["~+"],
         ["D_"],
-        ["Pa"],
+        ["Pa."],
       ],
       [
         ["~+"],
@@ -877,14 +875,14 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures right-flowing water kills a player", function () {
     const board = [
-      ["~+", "D.", "Pa"],
+      ["~+", "D.", "Pa."],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        ["~+", "D>", "Pa"],
+        ["~+", "D>", "Pa."],
       ],
       [
         ["~+", "D>", "Pd"],
@@ -915,14 +913,14 @@ describe("applyPatternTileUpdates", function () {
 
   it("ensures left-flowing water kills a player", function () {
     const board = [
-      ["Pa", "D.", "~+"],
+      ["Pa.", "D.", "~+"],
     ];
     const state = new State(arrayToBoard(board));
 
     /** @type {TestBoard[]} */
     const intermediateBoards = [
       [
-        ["Pa", "D<", "~+"],
+        ["Pa.", "D<", "~+"],
       ],
       [
         ["Pd", "D<", "~+"],
@@ -1061,7 +1059,7 @@ describe("applyPatternTileUpdates", function () {
 
   it("conveys living players down", function () {
     const board = [
-      ["Pav"],
+      ["Pa.v"],
       [" "],
       [" "],
     ];
@@ -1070,7 +1068,7 @@ describe("applyPatternTileUpdates", function () {
     const intermediateBoards = [
       [
         [" v"],
-        ["Pa"],
+        ["Pa."],
         [" "],
       ],
     ];
@@ -1099,7 +1097,7 @@ describe("applyPatternTileUpdates", function () {
 
   it("down-conveyed die by crashing into players", function () {
     const board = [
-      ["Pav"],
+      ["Pa.v"],
       ["Pd"],
       [" "],
     ];
@@ -1118,8 +1116,8 @@ describe("applyPatternTileUpdates", function () {
 
   it("down-conveyed players kill living players", function () {
     const board = [
-      ["Pav"],
-      ["Pa"],
+      ["Pa.v"],
+      ["Pa."],
       [" "],
     ];
     const state = new State(arrayToBoard(board));
@@ -1137,13 +1135,13 @@ describe("applyPatternTileUpdates", function () {
 
   it("conveys living players left", function () {
     const board = [
-      [" ", " ", "Pa<"],
+      [" ", " ", "Pa.<"],
     ];
     const state = new State(arrayToBoard(board));
 
     const intermediateBoards = [
       [
-        [" ", "Pa", " <"],
+        [" ", "Pa.", " <"],
       ],
     ];
 
@@ -1167,7 +1165,7 @@ describe("applyPatternTileUpdates", function () {
 
   it("left-conveyed die by crashing into players", function () {
     const board = [
-      [" ", "Pd", "Pa<"],
+      [" ", "Pd", "Pa.<"],
     ];
     const state = new State(arrayToBoard(board));
 
@@ -1182,7 +1180,7 @@ describe("applyPatternTileUpdates", function () {
 
   it("left-conveyed players kill living players", function () {
     const board = [
-      [" ", "Pa", "Pa<"],
+      [" ", "Pa.", "Pa.<"],
     ];
     const state = new State(arrayToBoard(board));
 
@@ -1197,13 +1195,13 @@ describe("applyPatternTileUpdates", function () {
 
   it("left-conveyed living players push single rocks", function () {
     const board = [
-      [" ", " ", "R.", "Pa<"],
+      [" ", " ", "R.", "Pa.<"],
     ];
     const state = new State(arrayToBoard(board));
 
     const intermediateBoards = [
       [
-        [" ", "R.", "Pa", " <"],
+        [" ", "R.", "Pa.", " <"],
       ],
     ];
 
@@ -1227,7 +1225,7 @@ describe("applyPatternTileUpdates", function () {
 
   it("left-conveyed players crash into double rocks rocks", function () {
     const board = [
-      [" ", "R.", "R.", "Pa<"],
+      [" ", "R.", "R.", "Pa.<"],
     ];
     const state = new State(arrayToBoard(board));
 
@@ -1242,7 +1240,7 @@ describe("applyPatternTileUpdates", function () {
 
   it("left-conveyed rocks kill players", function () {
     const board = [
-      [" ", "Pa", "R.", "Pa<"],
+      [" ", "Pa.", "R.", "Pa.<"],
     ];
     const state = new State(arrayToBoard(board));
 
@@ -1257,13 +1255,13 @@ describe("applyPatternTileUpdates", function () {
 
   it("conveys living players right", function () {
     const board = [
-      ["Pa>", " ", " "],
+      ["Pa.>", " ", " "],
     ];
     const state = new State(arrayToBoard(board));
 
     const intermediateBoards = [
       [
-        [" >", "Pa", " "],
+        [" >", "Pa.", " "],
       ],
     ];
 
@@ -1287,7 +1285,7 @@ describe("applyPatternTileUpdates", function () {
 
   it("right-conveyed die by crashing into players", function () {
     const board = [
-      ["Pa>", "Pd", " "],
+      ["Pa.>", "Pd", " "],
     ];
     const state = new State(arrayToBoard(board));
 
@@ -1302,7 +1300,7 @@ describe("applyPatternTileUpdates", function () {
 
   it("right-conveyed players kill living players", function () {
     const board = [
-      ["Pa>", "Pa", " "],
+      ["Pa.>", "Pa.", " "],
     ];
     const state = new State(arrayToBoard(board));
 
@@ -1317,13 +1315,13 @@ describe("applyPatternTileUpdates", function () {
 
   it("right-conveyed living players push single rocks", function () {
     const board = [
-      ["Pa>", "R.", " ", " "],
+      ["Pa.>", "R.", " ", " "],
     ];
     const state = new State(arrayToBoard(board));
 
     const intermediateBoards = [
       [
-        [" >", "Pa", "R.", " "],
+        [" >", "Pa.", "R.", " "],
       ],
     ];
 
@@ -1347,7 +1345,7 @@ describe("applyPatternTileUpdates", function () {
 
   it("right-conveyed players crash into double rocks rocks", function () {
     const board = [
-      ["Pa>", "R.", "R.", " "],
+      ["Pa.>", "R.", "R.", " "],
     ];
     const state = new State(arrayToBoard(board));
 
@@ -1362,7 +1360,7 @@ describe("applyPatternTileUpdates", function () {
 
   it("right-conveyed rocks kill players", function () {
     const board = [
-      ["Pa>", "R.", "Pa", " "],
+      ["Pa.>", "R.", "Pa.", " "],
     ];
     const state = new State(arrayToBoard(board));
 
@@ -1379,14 +1377,14 @@ describe("applyPatternTileUpdates", function () {
     const board = [
       [" "],
       [" "],
-      ["Pa^"],
+      ["Pa.^"],
     ];
     const state = new State(arrayToBoard(board));
 
     const intermediateBoards = [
       [
         [" "],
-        ["Pa"],
+        ["Pa."],
         [" ^"],
       ],
     ];
@@ -1417,7 +1415,7 @@ describe("applyPatternTileUpdates", function () {
     const board = [
       [" "],
       ["Pd"],
-      ["Pa^"],
+      ["Pa.^"],
     ];
     const state = new State(arrayToBoard(board));
 
@@ -1435,8 +1433,8 @@ describe("applyPatternTileUpdates", function () {
   it("up-conveyed players kill living players", function () {
     const board = [
       [" "],
-      ["Pa"],
-      ["Pa^"],
+      ["Pa."],
+      ["Pa.^"],
     ];
     const state = new State(arrayToBoard(board));
 
@@ -1456,7 +1454,7 @@ describe("applyPatternTileUpdates", function () {
       [" "],
       [" "],
       ["R."],
-      ["Pa^"],
+      ["Pa.^"],
     ];
     const state = new State(arrayToBoard(board));
 
@@ -1464,7 +1462,7 @@ describe("applyPatternTileUpdates", function () {
       [
         [" "],
         ["R."],
-        ["Pa"],
+        ["Pa."],
         [" ^"],
       ],
     ];
@@ -1498,7 +1496,7 @@ describe("applyPatternTileUpdates", function () {
       [" "],
       ["R."],
       ["R."],
-      ["Pa^"],
+      ["Pa.^"],
     ];
     const state = new State(arrayToBoard(board));
 
@@ -1517,9 +1515,9 @@ describe("applyPatternTileUpdates", function () {
   it("up-conveyed rocks kill players", function () {
     const board = [
       [" "],
-      ["Pa"],
+      ["Pa."],
       ["R."],
-      ["Pa^"],
+      ["Pa.^"],
     ];
     const state = new State(arrayToBoard(board));
 
@@ -1540,7 +1538,7 @@ describe("applyPatternTileUpdates", function () {
       ["R."],
       [" ^"],
       [" ^"],
-      ["Pa^"],
+      ["Pa.^"],
     ];
     const state = new State(arrayToBoard(board));
 
@@ -1548,7 +1546,7 @@ describe("applyPatternTileUpdates", function () {
       [
         [" "],
         ["Rv^"],
-        ["Pa^"],
+        ["Pa.^"],
         [" ^"],
       ],
       [
@@ -1556,6 +1554,183 @@ describe("applyPatternTileUpdates", function () {
         ["Pd^"],
         [" ^"],
         [" ^"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("down-moving players move into empty spaces", function () {
+    const board = [
+      ["Pav"],
+      [" "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" "],
+        ["Pa."],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("down-moving players are stopped by non-empty spaces", function () {
+    const board = [
+      ["Pav"],
+      ["W"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["Pa."],
+        ["W"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("left-moving players move into empty spaces", function () {
+    const board = [
+      [" ", "Pa<"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["Pa.", " "],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("left-moving players are stopped by non-empty spaces", function () {
+    const board = [
+      ["W", "Pa<"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["W", "Pa."],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("left-moving players push single rocks", function () {
+    const board = [
+      [" ", "R.", "Pa<"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["R.", "Pa.", " "],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("right-moving players move into empty spaces", function () {
+    const board = [
+      ["Pa>", " "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" ", "Pa."],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("right-moving players are stopped by non-empty spaces", function () {
+    const board = [
+      ["Pa>", "W"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["Pa.", "W"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("right-moving players push single rocks", function () {
+    const board = [
+      ["Pa>", "R.", " "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" ", "Pa.", "R."],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("up-moving players move into empty spaces", function () {
+    const board = [
+      [" "],
+      ["Pa^"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["Pa."],
+        [" "],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("up-moving players are stopped by non-empty spaces", function () {
+    const board = [
+      ["W"],
+      ["Pa^"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["W"],
+        ["Pa."],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("up-moving players push single rocks", function () {
+    const board = [
+      [" "],
+      ["R."],
+      ["Pa^"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["R."],
+        ["Pa."],
+        [" "],
       ],
     ];
 

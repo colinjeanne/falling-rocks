@@ -2,10 +2,11 @@
  * @typedef {import("./board.js").Board} Board
  * @typedef {import("./board.js").Point} Point
  * @typedef {import("./tile.js").ConveyorDirection} ConveyorDirection
+ * @typedef {import("./tile.js").DeadPlayerTile} DeadPlayerTile
  * @typedef {import("./tile.js").DirtTile} DirtTile
  * @typedef {import("./tile.js").FlowDirection} FlowDirection
  * @typedef {import("./tile.js").GenericTile} GenericTile
- * @typedef {import("./tile.js").PlayerTile} PlayerTile
+ * @typedef {import("./tile.js").LivingPlayerTile} LivingPlayerTile
  * @typedef {import("./tile.js").RockTile} RockTile
  * @typedef {import("./tile.js").Tile} Tile
  * @typedef {import("./tile.js").WaterTile} WaterTile
@@ -149,6 +150,15 @@ function isFallingRock(tile) {
 }
 
 /**
+ * Whether a rock is stationary
+ *
+ * @param {Tile} tile
+ */
+function isStationaryRock(tile) {
+  return tile.type === "Rock" && tile.fallingDirection === "None";
+}
+
+/**
  * Whether a tile supports a particular flow direction
  *
  * @param {FlowDirection} flowDirection
@@ -222,6 +232,19 @@ function isLivingPlayer(tile) {
 }
 
 /**
+ * Whether a tile is a player moving in a specific direction
+ *
+ * @param {LivingPlayerTile["inputDirection"]} inputDirection
+ * @returns {Pattern}
+ */
+function isMovingPlayer(inputDirection) {
+  return (tile) =>
+    (tile.type === "Player") &&
+    tile.isAlive &&
+    (tile.inputDirection === inputDirection);
+}
+
+/**
  * @typedef {[0 | 1 | 2, 0 | 1 | 2]} RegionPoint
  * @typedef {[
  *   Tile, Tile, Tile,
@@ -230,9 +253,10 @@ function isLivingPlayer(tile) {
  * ]} TileRegion
  *
  * @typedef {(
+ *   Omit<DeadPlayerTile, "justUpdated" | "conveyorDirection"> |
  *   Omit<DirtTile, "justUpdated" | "conveyorDirection"> |
  *   Omit<GenericTile, "justUpdated" | "conveyorDirection"> |
- *   Omit<PlayerTile, "justUpdated" | "conveyorDirection"> |
+ *   Omit<LivingPlayerTile, "justUpdated" | "conveyorDirection"> |
  *   Omit<RockTile, "justUpdated" | "conveyorDirection"> |
  *   Omit<WaterTile, "justUpdated" | "conveyorDirection">
  * )} SimpleTile
@@ -275,6 +299,14 @@ function movedPlayer(originalLocation) {
       throw new Error(
         `Expected player tile at (${originalLocation[0]}, ${originalLocation[1]}) but got ${tile.type}`
       );
+    }
+
+    if (tile.isAlive) {
+      return {
+        type: "Player",
+        isAlive: tile.isAlive,
+        inputDirection: "None",
+      };
     }
 
     return { type: "Player", isAlive: tile.isAlive };
@@ -947,6 +979,149 @@ export const patterns = [
       null, null, null,
       null, dirt("None"), null,
       null, null, null,
+    ],
+  ],
+  // Down-moving players move into empty spaces
+  [
+    [
+      any, any, any,
+      any, isMovingPlayer("Down"), any,
+      any, isEmptyForPlayer, any,
+    ],
+    [
+      null, null, null,
+      null, empty, null,
+      null, movedPlayer([1, 1]), null,
+    ],
+  ],
+  // Down-moving players are stopped by non-empty spaces
+  [
+    [
+      any, any, any,
+      any, isMovingPlayer("Down"), any,
+      any, not(isEmptyForPlayer), any,
+    ],
+    [
+      null, null, null,
+      null, movedPlayer([1, 1]), null,
+      null, null, null,
+    ],
+  ],
+  // Left-moving players move into empty spaces
+  [
+    [
+      any, any, any,
+      isEmptyForPlayer, isMovingPlayer("Left"), any,
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      movedPlayer([1, 1]), empty, null,
+      null, null, null,
+    ],
+  ],
+  // Left-moving players push rocks into empty spaces
+  [
+    [
+      any, any, any,
+      isEmptyForRock, isStationaryRock, isMovingPlayer("Left"),
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      rock("None"), movedPlayer([2, 1]), empty,
+      null, null, null,
+    ],
+  ],
+  // Left-moving players are stopped by non-empty spaces
+  [
+    [
+      any, any, any,
+      any, not(isEmptyForPlayer), isMovingPlayer("Left"),
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      null, null, movedPlayer([2, 1]),
+      null, null, null,
+    ],
+  ],
+  // Right-moving players move into empty spaces
+  [
+    [
+      any, any, any,
+      any, isMovingPlayer("Right"), isEmptyForPlayer,
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      null, empty, movedPlayer([1, 1]),
+      null, null, null,
+    ],
+  ],
+  // Right-moving players push rocks into empty spaces
+  [
+    [
+      any, any, any,
+      isMovingPlayer("Right"), isStationaryRock, isEmptyForRock,
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      empty, movedPlayer([0, 1]), rock("None"),
+      null, null, null,
+    ],
+  ],
+  // Right-moving players are stopped by non-empty spaces
+  [
+    [
+      any, any, any,
+      isMovingPlayer("Right"), not(isEmptyForPlayer), any,
+      any, any, any,
+    ],
+    [
+      null, null, null,
+      movedPlayer([0, 1]), null, null,
+      null, null, null,
+    ],
+  ],
+  // Up-moving players move into empty spaces
+  [
+    [
+      any, isEmptyForPlayer, any,
+      any, isMovingPlayer("Up"), any,
+      any, any, any,
+    ],
+    [
+      null, movedPlayer([1, 1]), null,
+      null, empty, null,
+      null, null, null,
+    ],
+  ],
+  // Up-moving players push rocks into empty spaces
+  [
+    [
+      any, isEmptyForRock, any,
+      any, isStationaryRock, any,
+      any, isMovingPlayer("Up"), any,
+    ],
+    [
+      null, rock("None"), null,
+      null, movedPlayer([1, 2]), null,
+      null, empty, null,
+    ],
+  ],
+  // Up-moving players are stopped by non-emtpy spaces
+  [
+    [
+      any, any, any,
+      any, not(isEmptyForPlayer), any,
+      any, isMovingPlayer("Up"), any,
+    ],
+    [
+      null, null, null,
+      null, null, null,
+      null, movedPlayer([1, 2]), null,
     ],
   ],
 ];

@@ -54,7 +54,7 @@
   </body>
   <script type="module">
     import { Board, decodeBoard, encodeBoard } from "./src/board.js";
-    import { State, movePlayer } from "./src/state.js";
+    import { State } from "./src/state.js";
 
     const tickMs = 250;
     const tileSize = 20;
@@ -231,6 +231,7 @@
           return {
             type,
             isAlive: true,
+            inputDirection: "None",
             justUpdated: false,
             conveyorDirection,
           };
@@ -325,25 +326,25 @@
         case "Up":
         case "ArrowUp":
         case "w":
-          updatedPoints.push(...movePlayer(state, "Up"));
+          updatedPoints.push(...state.movePlayers("Up"));
           break;
 
         case "Left":
         case "ArrowLeft":
         case "a":
-          updatedPoints.push(...movePlayer(state, "Left"));
+          updatedPoints.push(...state.movePlayers("Left"));
           break;
 
         case "Down":
         case "ArrowDown":
         case "s":
-          updatedPoints.push(...movePlayer(state, "Down"));
+          updatedPoints.push(...state.movePlayers("Down"));
           break;
 
         case "Right":
         case "ArrowRight":
         case "d":
-          updatedPoints.push(...movePlayer(state, "Right"));
+          updatedPoints.push(...state.movePlayers("Right"));
           break;
 
         default:
@@ -355,6 +356,8 @@
         renderBoard(boardElement, state.board, updatedPoints);
         renderGameState(state);
         keyboardEvent.preventDefault(); // Prevent other browser behaviors
+
+        startGameClock();
       }
     }
 
@@ -376,7 +379,29 @@
       }
     }
 
-    let timerId;
+    let timerId = undefined;
+    function startGameClock() {
+      if (!timerId) {
+        timerId = setInterval(
+          () => {
+            if (state.updatedTiles.length > 0) {
+              const updatedPoints = state.applyUpdates();
+              renderBoard(boardElement, state.board, updatedPoints);
+              renderGameState(state);
+            } else {
+              stopGameClock();
+            }
+          },
+          tickMs
+        );
+      }
+    }
+
+    function stopGameClock() {
+      clearInterval(timerId);
+      timerId = undefined;
+    }
+
     buildButton.addEventListener("click", () => {
       buildButton.disabled = true;
       playButton.disabled = false;
@@ -391,13 +416,14 @@
       boardElement.addEventListener("mousemove", updateDraggedTiles);
       boardElement.addEventListener("click", updateTile);
 
-      clearInterval(timerId);
+      stopGameClock();
 
       renderBoard(boardElement, board);
     });
 
     resetButton.addEventListener("click", () => {
       state.reset();
+      startGameClock();
       renderBoard(boardElement, board);
       renderGameState(state);
     });
@@ -411,7 +437,6 @@
       playButton.blur(); // Returns focus to the document
 
       state = new State(board.clone());
-      state.updateEntireBoard();
       renderGameState(state);
 
       document.addEventListener("keydown", handleInput);
@@ -421,16 +446,7 @@
       boardElement.removeEventListener("mousemove", updateDraggedTiles);
       boardElement.removeEventListener("click", updateTile);
 
-      timerId = setInterval(
-        () => {
-          if (state.updatedTiles.length > 0) {
-            const updatedPoints = state.applyUpdates();
-            renderBoard(boardElement, state.board, updatedPoints);
-            renderGameState(state);
-          }
-        },
-        tickMs
-      );
+      startGameClock();
 
       renderBoard(boardElement, board);
     });

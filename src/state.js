@@ -3,7 +3,7 @@ import { applyPatternTileUpdates } from "./patterns.js";
 /**
  * @typedef {import("./board.js").Board} Board
  * @typedef {import("./board.js").Point} Point
- * @typedef {import("./tile.js").Direction} Direction
+ * @typedef {import("./tile.js").InputDirection} InputDirection
  * @typedef {import("./tile.js").PlayerTile} PlayerTile
  * @typedef {import("./tile.js").RockTile} RockTile
  * @typedef {import("./tile.js").Tile} Tile
@@ -24,10 +24,18 @@ export class State {
     this.originalBoard = this.board.clone();
 
     /** @type {number} */
-    this.collected = 0;
+    this.originalCollectables = this.originalBoard.tiles.filter(
+      tile => tile.type === "Collectable"
+    ).length;
 
     /** @type {Point[]} */
     this.updatedTiles = [];
+
+    this.reset();
+  }
+
+  get collected() {
+    return this.originalCollectables - this.collectablesRemaining;
   }
 
   get collectablesRemaining() {
@@ -53,25 +61,7 @@ export class State {
 
   reset() {
     this.board = this.originalBoard.clone();
-    this.collected = 0;
-    this.updatedTiles = [];
-  }
-
-  /**
-   * @param {Point} pt
-   * @param {Tile} tile
-   */
-  setTile(pt, tile) {
-    this.board.setTile(pt, tile);
-    this.#addUpdatedTile(pt);
-    this.#addUpdatedTile([pt[0] - 1, pt[1]]);
-    this.#addUpdatedTile([pt[0] - 1, pt[1] - 1]);
-    this.#addUpdatedTile([pt[0] - 1, pt[1] + 1]);
-    this.#addUpdatedTile([pt[0] + 1, pt[1]]);
-    this.#addUpdatedTile([pt[0] + 1, pt[1] - 1]);
-    this.#addUpdatedTile([pt[0] + 1, pt[1] + 1]);
-    this.#addUpdatedTile([pt[0], pt[1] - 1]);
-    this.#addUpdatedTile([pt[0], pt[1] + 1]);
+    this.#updateEntireBoard();
   }
 
   /**
@@ -88,7 +78,7 @@ export class State {
     }
   }
 
-  updateEntireBoard() {
+  #updateEntireBoard() {
     this.updatedTiles = [];
 
     for (let y = this.board.height - 1; y >= 0; --y) {
@@ -128,178 +118,43 @@ export class State {
 
     return updatedPoints;
   }
-}
 
-/**
- * Whether a tile behaves as if it were empty for a rock
- *
- * @param {Tile} tile
- */
-function isEmptyForRock(tile) {
-  return tile.type === "Empty" || tile.type === "Water";
-}
+  /**
+   * Moves all living players in the given direction
+   *
+   * @param {InputDirection} inputDirection
+   * @returns {Point[]} The points that were updated
+   */
+  movePlayers(inputDirection) {
+    /** @type {Point[]} */
+    const updatedPoints = [];
 
-/**
- * Whether a rock can move through the tile
- *
- * @param {Tile} tile
- */
-function canRockMoveThrough(tile) {
-  return isEmptyForRock(tile) ||
-    tile.type === "Player" ||
-    (tile.type === "Rock" && tile.fallingDirection !== "None");
-}
-
-/**
- * Gets the next point in a given direction
- *
- * @param {Point} pt
- * @param {Direction} direction
- * @returns {Point}
- */
-function nextCoordinateInDirection(pt, direction) {
-  let newX = pt[0];
-  let newY = pt[1];
-
-  switch (direction) {
-    case "Up":
-      --newY;
-      break;
-
-    case "Left":
-      --newX;
-      break;
-
-    case "Down":
-      ++newY;
-      break;
-
-    case "Right":
-      ++newX;
-      break;
-
-    case "DownLeft":
-      --newX;
-      ++newY;
-      break;
-
-    case "DownRight":
-      ++newX;
-      ++newY;
-      break;
-  }
-
-  return [newX, newY];
-}
-
-/**
- * Whether a player can move to the given location
- *
- * @param {Board} board
- * @param {Point} pt
- * @param {Direction} direction
- */
-function canMoveToLocation(board, pt, direction) {
-  const tile = board.getTile(pt);
-  if (
-    tile.type === "Wall" ||
-    tile.type === "Player" ||
-    tile.type === "Water" ||
-    (tile.type === "Dirt" && tile.flowDirection !== "None")
-  ) {
-    return false;
-  } else if (tile.type === "Rock") {
-    const next = nextCoordinateInDirection(pt, direction);
-    if (!board.isInBounds(next)) {
-      return false;
-    }
-
-    const nextTile = board.getTile(next);
-    return nextTile.type !== "Player" && canRockMoveThrough(nextTile);
-  }
-
-  return true;
-}
-
-/**
- * Moves the player in the given direction
- *
- * @param {State} state
- * @param {Direction} direction
- * @returns {Point[]} the points that were updated
- */
-export function movePlayer(state, direction) {
-  const playerPositions = state.board.tiles.
-    map((tile, index) => ({ tile, index })).
-    filter(({ tile }) => tile.type === "Player" && tile.isAlive).
-    map(({ tile, index }) => ({
-      tile,
-      pt: /** @type {Point} */ ([
-        index % state.board.width,
-        Math.floor(index / state.board.width),
-      ]),
-    }));
-
-  playerPositions.sort((a, b) => {
-    if (direction === "Up") {
-      return a.pt[1] - b.pt[1];
-    } else if (direction === "Left") {
-      return a.pt[0] - b.pt[0];
-    } else if (direction === "Down") {
-      return b.pt[1] - a.pt[1];
-    }
-
-    return b.pt[0] - a.pt[0];
-  });
-
-  /** @type {Point[]} */
-  const updatedPoints = [];
-  for (const { tile: playerTile, pt } of playerPositions) {
-    const newPoint = nextCoordinateInDirection(pt, direction);
-
-    if (canMoveToLocation(state.board, newPoint, direction)) {
-      const tile = state.board.getTile(newPoint);
-      if (tile.type === "Collectable") {
-        ++state.collected;
-      }
-
-      /** @type {Tile} */
-      const newEmptyTile = {
-        type: "Empty",
-        justUpdated: false,
-        conveyorDirection: playerTile.conveyorDirection,
-      };
-
-      /** @type {PlayerTile} */
-      const newPlayerTile = {
-        type: "Player",
-        isAlive: true,
-        justUpdated: false,
-        conveyorDirection: tile.conveyorDirection,
-      };
-
-      state.setTile(pt, newEmptyTile);
-      state.setTile(newPoint, newPlayerTile);
-
-      updatedPoints.push(pt);
-      updatedPoints.push(newPoint);
-
-      if (tile.type === "Rock") {
-        const next = nextCoordinateInDirection(newPoint, direction);
-        const nextTile = state.board.getTile(next);
-
-        /** @type {RockTile} */
-        const newRockTile = {
-          type: "Rock",
-          fallingDirection: "None",
-          justUpdated: false,
-          conveyorDirection: nextTile.conveyorDirection,
+    for (let x = 0; x < this.board.width; ++x) {
+      for (let y = 0; y < this.board.height; ++y) {
+        /** @type {Point} */
+        const pt = [x, y];
+        const tile = this.board.getTile(pt);
+        if (tile.type === "Player" && tile.isAlive) {
+          this.board.setTile(
+            pt,
+            {
+              type: "Player",
+              isAlive: true,
+              inputDirection,
+              conveyorDirection: tile.conveyorDirection,
+              justUpdated: tile.justUpdated,
+            }
+          )
+          updatedPoints.push(pt);
+          this.#addUpdatedTile(pt);
+          this.#addUpdatedTile([pt[0] - 1, pt[1]]);
+          this.#addUpdatedTile([pt[0] + 1, pt[1]]);
+          this.#addUpdatedTile([pt[0], pt[1] - 1]);
+          this.#addUpdatedTile([pt[0], pt[1] + 1]);
         }
-        state.setTile(next, newRockTile);
-        updatedPoints.push(next);
       }
     }
-  }
 
-  return updatedPoints;
+    return updatedPoints;
+  }
 }

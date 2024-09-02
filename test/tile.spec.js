@@ -77,10 +77,51 @@ const successCases = [
     {
       type: "Player",
       conveyorDirection: "None",
+      inputDirection: "Down",
       isAlive: true,
       justUpdated: false,
     },
-    "Pa",
+    "Pav",
+  ],
+  [
+    {
+      type: "Player",
+      conveyorDirection: "None",
+      inputDirection: "Left",
+      isAlive: true,
+      justUpdated: false,
+    },
+    "Pa<",
+  ],
+  [
+    {
+      type: "Player",
+      conveyorDirection: "None",
+      inputDirection: "None",
+      isAlive: true,
+      justUpdated: false,
+    },
+    "Pa.",
+  ],
+  [
+    {
+      type: "Player",
+      conveyorDirection: "None",
+      inputDirection: "Right",
+      isAlive: true,
+      justUpdated: false,
+    },
+    "Pa>",
+  ],
+  [
+    {
+      type: "Player",
+      conveyorDirection: "None",
+      inputDirection: "Up",
+      isAlive: true,
+      justUpdated: false,
+    },
+    "Pa^",
   ],
   [
     {
@@ -200,6 +241,7 @@ describe("decodeTile", function () {
     ["D#", "Unexpected flow direction # at 1"],
     ["P", "Unexpected player status undefined at 1"],
     ["Pz", "Unexpected player status z at 1"],
+    ["Paz", "Unexpected input direction z at 2"],
     ["R", "Unexpected falling direction undefined at 1"],
     ["Rz", "Unexpected falling direction z at 1"],
     ["~", "Unexpected flow direction undefined at 1"],
