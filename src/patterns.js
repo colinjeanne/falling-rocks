@@ -362,10 +362,10 @@ function water(flowDirection) {
  * ]} TileUpdateRegion
  */
 
-/** @type {[PatternRegion, TileUpdateRegion][]} */
+/** @type {[string, PatternRegion, TileUpdateRegion][]} */
 export const patterns = [
-  // Down conveyors move players down
   [
+    "Down conveyors move players down",
     [
       any, any, any,
       any, isConveyoredPlayer("Down"), any,
@@ -377,8 +377,8 @@ export const patterns = [
       null, movedPlayer([1, 1]), null,
     ],
   ],
-  // Down conveyored players kill other players
   [
+    "Down conveyored players kill other players",
     [
       any, any, any,
       any, isConveyoredPlayer("Down"), any,
@@ -390,8 +390,8 @@ export const patterns = [
       null, deadPlayer, null,
     ],
   ],
-  // Down conveyored players crash
   [
+    "Down conveyored players crash",
     [
       any, any, any,
       any, and(isLivingPlayer, isConveyoredPlayer("Down")), any,
@@ -403,8 +403,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Left conveyors move players left
   [
+    "Left conveyors move players left",
     [
       any, any, any,
       isEmptyForPlayer, isConveyoredPlayer("Left"), any,
@@ -416,8 +416,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Left conveyored players move rocks
   [
+    "Left conveyored players move rocks",
     [
       any, any, any,
       isEmptyForRock, isTile({ type: "Rock" }), isConveyoredPlayer("Left"),
@@ -429,8 +429,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Left pushed rocks kill players
   [
+    "Left pushed rocks kill players",
     [
       any, any, any,
       isLivingPlayer, isTile({ type: "Rock" }), isConveyoredPlayer("Left"),
@@ -442,8 +442,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Left conveyored players kill other players
   [
+    "Left conveyored players kill other players",
     [
       any, any, any,
       and(isLivingPlayer, not(isConveyoredPlayer("Left"))), isConveyoredPlayer("Left"), any,
@@ -455,8 +455,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Left conveyored players crash
   [
+    "Left conveyored players crash",
     [
       any, any, any,
       any, not(isEmptyForPlayer), and(isLivingPlayer, isConveyoredPlayer("Left")),
@@ -468,8 +468,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Right conveyors move players right
   [
+    "Right conveyors move players right",
     [
       any, any, any,
       any, isConveyoredPlayer("Right"), isEmptyForPlayer,
@@ -481,8 +481,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Right conveyored players move rocks
   [
+    "Right conveyored players move rocks",
     [
       any, any, any,
       isConveyoredPlayer("Right"), isTile({ type: "Rock" }), isEmptyForRock,
@@ -494,8 +494,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Right pushed rocks kill players
   [
+    "Right pushed rocks kill players",
     [
       any, any, any,
       isConveyoredPlayer("Right"), isTile({ type: "Rock" }), isLivingPlayer,
@@ -507,8 +507,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Right conveyored players kill other players
   [
+    "Right conveyored players kill other players",
     [
       any, any, any,
       any, isConveyoredPlayer("Right"), and(isLivingPlayer, not(isConveyoredPlayer("Right"))),
@@ -520,8 +520,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Right conveyored players crash
   [
+    "Right conveyored players crash",
     [
       any, any, any,
       any, and(isLivingPlayer, isConveyoredPlayer("Right")), not(isEmptyForPlayer),
@@ -533,8 +533,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Up conveyors move players up
   [
+    "Up conveyors move players up",
     [
       any, isEmptyForPlayer, any,
       any, isConveyoredPlayer("Up"), any,
@@ -546,8 +546,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Falling rocks kill up-conveyed players
   [
+    "Falling rocks kill up-conveyed players",
     [
       any, isEmptyForRock, any,
       any, isFallingRock, any,
@@ -559,8 +559,8 @@ export const patterns = [
       null, empty, null,
     ],
   ],
-  // Up conveyored players move rocks
   [
+    "Up conveyored players move rocks",
     [
       any, isEmptyForRock, any,
       any, isTile({ type: "Rock" }), any,
@@ -572,8 +572,8 @@ export const patterns = [
       null, empty, null,
     ],
   ],
-  // Up pushed rocks kill players
   [
+    "Up pushed rocks kill players",
     [
       any, isLivingPlayer, any,
       any, isTile({ type: "Rock" }), any,
@@ -585,8 +585,8 @@ export const patterns = [
       null, deadPlayer, null,
     ],
   ],
-  // Up conveyored players kill other players
   [
+    "Up conveyored players kill other players",
     [
       any, and(isLivingPlayer, not(isConveyoredPlayer("Up"))), any,
       any, isConveyoredPlayer("Up"), any,
@@ -598,8 +598,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Up conveyored players crash
   [
+    "Up conveyored players crash",
     [
       any, any, any,
       any, not(isEmptyForPlayer), any,
@@ -611,8 +611,8 @@ export const patterns = [
       null, deadPlayer, null,
     ],
   ],
-  // Rocks fall down
   [
+    "Rocks fall down",
     [
       any, any, any,
       any, isTile({ type: "Rock" }), any,
@@ -624,8 +624,8 @@ export const patterns = [
       null, rock("Down"), null,
     ],
   ],
-  // Rocks that fall down kill players and stop
   [
+    "Rocks that fall down kill players and stop",
     [
       any, any, any,
       any, isFallingRock, any,
@@ -637,8 +637,8 @@ export const patterns = [
       null, deadPlayer, null,
     ],
   ],
-  // Rocks fall left off a hard surface
   [
+    "Rocks fall left off a hard surface",
     [
       any, any, any,
       isEmptyForRock, isFallingRock, any,
@@ -650,8 +650,8 @@ export const patterns = [
       rock("DownLeft"), null, null,
     ],
   ],
-  // Rocks falling left kill a player and stop
   [
+    "Rocks falling left kill a player and stop",
     [
       any, any, any,
       isEmptyForRock, isFallingRock, any,
@@ -663,8 +663,8 @@ export const patterns = [
       deadPlayer, null, null,
     ],
   ],
-  // Rocks fall right off a hard surface
   [
+    "Rocks fall right off a hard surface",
     [
       any, any, any,
       any, isFallingRock, isEmptyForRock,
@@ -676,8 +676,8 @@ export const patterns = [
       null, null, rock("DownRight"),
     ],
   ],
-  // Rocks falling right kill a player and stop
   [
+    "Rocks falling right kill a player and stop",
     [
       any, any, any,
       any, isFallingRock, isEmptyForRock,
@@ -689,8 +689,8 @@ export const patterns = [
       null, null, deadPlayer,
     ],
   ],
-  // Falling rocks stop if there is no where to fall
   [
+    "Falling rocks stop if there is no where to fall",
     [
       any, any, any,
       any, isFallingRock, any,
@@ -702,8 +702,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Water flows down
   [
+    "Water flows down",
     [
       any, or(isTile({ type: "Water" }), isWaterloggedDirt), any,
       any, isTile({ type: "Empty" }), any,
@@ -715,8 +715,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Water onto a surface
   [
+    "Water onto a surface",
     [
       any, or(isTile({ type: "Water" }), isWaterloggedDirt), any,
       any, isTile({ type: "Empty" }), any,
@@ -728,8 +728,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Down-flowing water kills a player
   [
+    "Down-flowing water kills a player",
     [
       any, any, any,
       any, or(isTile({ type: "Water" }), isWaterloggedDirt), any,
@@ -741,8 +741,8 @@ export const patterns = [
       null, deadPlayer, null,
     ],
   ],
-  // Down-ward flowing water converts to both when a surface is below it
   [
+    "Down-ward flowing water converts to both when a surface is below it",
     [
       any, any, any,
       any, isFlowingWater("Down"), any,
@@ -754,8 +754,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Both-ward flowing water converts to down when no surface is below it
   [
+    "Both-ward flowing water converts to down when no surface is below it",
     [
       any, any, any,
       any, isFlowingWater("Both"), any,
@@ -767,8 +767,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Water spreads right
   [
+    "Water spreads right",
     [
       any, any, any,
       any, supportsFlowDirection("Right"), isTile({ type: "Empty" }),
@@ -780,8 +780,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Right-flowing water kills a player
   [
+    "Right-flowing water kills a player",
     [
       any, any, any,
       any, or(isTile({ type: "Water" }), isWaterloggedDirt), isLivingPlayer,
@@ -793,8 +793,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Water spreads left
   [
+    "Water spreads left",
     [
       any, any, any,
       any, isTile({ type: "Empty" }), and(supportsFlowDirection("Left"), not(wasJustUpdated)),
@@ -806,8 +806,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Left-flowing water kills a player
   [
+    "Left-flowing water kills a player",
     [
       any, any, any,
       any, isLivingPlayer, and(or(isTile({ type: "Water" }), isWaterloggedDirt), not(wasJustUpdated)),
@@ -819,9 +819,9 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Both-flowing and down-flowing water dries if it doesn't have a source or
-  // down-flowing water above it
   [
+    "Both-flowing and down-flowing water dries if it doesn't have a source" +
+    " or down-flowing water above it",
     [
       any, not(or(isTile({ type: "Water" }), isWaterloggedDirt)), any,
       any, or(isFlowingWater("Both"), isFlowingWater("Down")), any,
@@ -833,9 +833,9 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Right-flowing water dries if it doesn't have a source or right-flowing
-  // water to its right
   [
+    "Right-flowing water dries if it doesn't have a source or right-flowing" +
+    " water to its right",
     [
       any, any, any,
       not(supportsFlowDirection("Right")), isFlowingWater("Right"), any,
@@ -847,9 +847,9 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Left-flowing water dries if it doesn't have a source or left-flowing
-  // water to its left
   [
+    "Left-flowing water dries if it doesn't have a source or left-flowing" +
+    " water to its left",
     [
       any, any, any,
       any, isFlowingWater("Left"), and(not(supportsFlowDirection("Left")), not(wasJustUpdated)),
@@ -861,8 +861,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Water waterlogs dirt from the top
   [
+    "Water waterlogs dirt from the top",
     [
       any, or(isTile({ type: "Water" }), isWaterloggedDirt), any,
       any, isTile({ type: "Dirt", flowDirection: "None" }), any,
@@ -874,8 +874,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Waterlogged dirt flows onto a surface
   [
+    "Waterlogged dirt flows onto a surface",
     [
       any, or(isTile({ type: "Water" }), isWaterloggedDirt), any,
       any, isTile({ type: "Dirt", flowDirection: "None" }), any,
@@ -887,8 +887,9 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Down-ward flowing waterlogged dirt converts to both when a surface is below it
   [
+    "Down-ward flowing waterlogged dirt converts to both when a surface is" +
+    " below it",
     [
       any, any, any,
       any, isDirtFlowing("Down"), any,
@@ -900,8 +901,9 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Both-ward flowing waterlogged dirt converts to down when no surface is below it
   [
+    "Both-ward flowing waterlogged dirt converts to down when no surface is" +
+    " below it",
     [
       any, any, any,
       any, isDirtFlowing("Both"), any,
@@ -913,8 +915,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Water waterlogs to the right
   [
+    "Water waterlogs to the right",
     [
       any, any, any,
       any, supportsFlowDirection("Right"), isTile({ type: "Dirt", flowDirection: "None" }),
@@ -926,8 +928,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Water waterlogs to the left
   [
+    "Water waterlogs to the left",
     [
       any, any, any,
       any, isTile({ type: "Dirt", flowDirection: "None" }), and(or(isTile({ type: "Water" }), isWaterloggedDirt), not(wasJustUpdated)),
@@ -939,9 +941,9 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Both-flowing and down-flowing water dries if it doesn't have a source or
-  // down-flowing water above it
   [
+    "Both-flowing and down-flowing water dries if it doesn't have a source" +
+    " or down-flowing water above it",
     [
       any, not(or(isTile({ type: "Water" }), isWaterloggedDirt)), any,
       any, or(isDirtFlowing("Both"), isDirtFlowing("Down")), any,
@@ -953,9 +955,9 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Right-flowing water dries if it doesn't have a source or right-flowing
-  // water to its right
   [
+    "Right-flowing water dries if it doesn't have a source or right-flowing" +
+    " water to its right",
     [
       any, any, any,
       not(supportsFlowDirection("Right")), isDirtFlowing("Right"), any,
@@ -967,9 +969,9 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Left-flowing water dries if it doesn't have a source or left-flowing
-  // water to its left
   [
+    "Left-flowing water dries if it doesn't have a source or left-flowing" +
+    " water to its left",
     [
       any, any, any,
       any, isDirtFlowing("Left"), and(not(supportsFlowDirection("Left")), not(wasJustUpdated)),
@@ -981,8 +983,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Down-moving players move into empty spaces
   [
+    "Down-moving players move into empty spaces",
     [
       any, any, any,
       any, isMovingPlayer("Down"), any,
@@ -994,8 +996,8 @@ export const patterns = [
       null, movedPlayer([1, 1]), null,
     ],
   ],
-  // Down-moving players are stopped by non-empty spaces
   [
+    "Down-moving players are stopped by non-empty spaces",
     [
       any, any, any,
       any, isMovingPlayer("Down"), any,
@@ -1007,8 +1009,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Left-moving players move into empty spaces
   [
+    "Left-moving players move into empty spaces",
     [
       any, any, any,
       isEmptyForPlayer, isMovingPlayer("Left"), any,
@@ -1020,8 +1022,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Left-moving players push rocks into empty spaces
   [
+    "Left-moving players push rocks into empty spaces",
     [
       any, any, any,
       isEmptyForRock, isStationaryRock, isMovingPlayer("Left"),
@@ -1033,8 +1035,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Left-moving players are stopped by non-empty spaces
   [
+    "Left-moving players are stopped by non-empty spaces",
     [
       any, any, any,
       any, not(isEmptyForPlayer), isMovingPlayer("Left"),
@@ -1046,8 +1048,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Right-moving players move into empty spaces
   [
+    "Right-moving players move into empty spaces",
     [
       any, any, any,
       any, isMovingPlayer("Right"), isEmptyForPlayer,
@@ -1059,8 +1061,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Right-moving players push rocks into empty spaces
   [
+    "Right-moving players push rocks into empty spaces",
     [
       any, any, any,
       isMovingPlayer("Right"), isStationaryRock, isEmptyForRock,
@@ -1072,8 +1074,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Right-moving players are stopped by non-empty spaces
   [
+    "Right-moving players are stopped by non-empty spaces",
     [
       any, any, any,
       isMovingPlayer("Right"), not(isEmptyForPlayer), any,
@@ -1085,8 +1087,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Up-moving players move into empty spaces
   [
+    "Up-moving players move into empty spaces",
     [
       any, isEmptyForPlayer, any,
       any, isMovingPlayer("Up"), any,
@@ -1098,8 +1100,8 @@ export const patterns = [
       null, null, null,
     ],
   ],
-  // Up-moving players push rocks into empty spaces
   [
+    "Up-moving players push rocks into empty spaces",
     [
       any, isEmptyForRock, any,
       any, isStationaryRock, any,
@@ -1111,8 +1113,8 @@ export const patterns = [
       null, empty, null,
     ],
   ],
-  // Up-moving players are stopped by non-emtpy spaces
   [
+    "Up-moving players are stopped by non-emtpy spaces",
     [
       any, any, any,
       any, not(isEmptyForPlayer), any,
@@ -1249,8 +1251,12 @@ export function applyPatternTileUpdates(board, pointsToUpdate) {
   const updatedPoints = [];
   for (const point of sortedUpdatedTiles) {
     const region = getPointCenteredRegion(board, point);
-    for (const [pattern, updates] of patterns) {
+    for (const [description, pattern, updates] of patterns) {
       if (matcher(region, pattern)) {
+        console.debug(
+          `Matched "${description}" at (${point[0]}, ${point[1]})`
+        );
+
         updatedPoints.push(
           ...applyRegionUpdates(board, point, region, updates)
         );
