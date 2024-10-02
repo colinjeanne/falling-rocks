@@ -11,25 +11,16 @@
  * @typedef {import("./tile.js").Tile} Tile
  * @typedef {import("./tile.js").WaterTile} WaterTile
  *
- * @callback Pattern
+ * @callback PatternCallback
  * @param {Tile} tile The tile to match
  * @returns {boolean} Whether the pattern matches
  */
 
 /**
- * Matches any tile
- *
- * @param {Tile} _tile
- */
-function any(_tile) {
-  return true;
-}
-
-/**
  * Negates a pattern
  *
- * @param {Pattern} pattern
- * @returns {Pattern}
+ * @param {PatternCallback} pattern
+ * @returns {PatternCallback}
  */
 function not(pattern) {
   return (tile) => !pattern(tile);
@@ -38,9 +29,9 @@ function not(pattern) {
 /**
  * Ors two patterns
  *
- * @param {Pattern} pattern1
- * @param {Pattern} pattern2
- * @returns {Pattern}
+ * @param {PatternCallback} pattern1
+ * @param {PatternCallback} pattern2
+ * @returns {PatternCallback}
  */
 function or(pattern1, pattern2) {
   return (tile) => pattern1(tile) || pattern2(tile);
@@ -49,9 +40,9 @@ function or(pattern1, pattern2) {
 /**
  * Ands two patterns
  *
- * @param {Pattern} pattern1
- * @param {Pattern} pattern2
- * @returns {Pattern}
+ * @param {PatternCallback} pattern1
+ * @param {PatternCallback} pattern2
+ * @returns {PatternCallback}
  */
 function and(pattern1, pattern2) {
   return (tile) => pattern1(tile) && pattern2(tile);
@@ -61,7 +52,7 @@ function and(pattern1, pattern2) {
  * Matches a partial tile
  *
  * @param {Partial<Tile> & Pick<Tile, "type">} patternTile
- * @returns {Pattern}
+ * @returns {PatternCallback}
  */
 function isTile(patternTile) {
   return (tile) => {
@@ -122,7 +113,7 @@ function isEmptyForPlayer(tile) {
  * Whether a tile is a player on a conveyor
  *
  * @param {ConveyorDirection} conveyorDirection
- * @returns {Pattern}
+ * @returns {PatternCallback}
  */
 function isConveyoredPlayer(conveyorDirection) {
   return and(
@@ -162,7 +153,7 @@ function isStationaryRock(tile) {
  * Whether a tile supports a particular flow direction
  *
  * @param {FlowDirection} flowDirection
- * @returns {Pattern}
+ * @returns {PatternCallback}
  */
 function supportsFlowDirection(flowDirection) {
   return (tile) =>
@@ -184,7 +175,7 @@ function supportsFlowDirection(flowDirection) {
  * Whether a tile is a non-source flowing water with a specific direction
  *
  * @param {FlowDirection} flowDirection
- * @returns {Pattern}
+ * @returns {PatternCallback}
  */
 function isFlowingWater(flowDirection) {
   return (tile) =>
@@ -205,7 +196,7 @@ function isWaterloggedDirt(tile) {
  * Whether a tile is a waterlogged dirt with a specific direction
  *
  * @param {FlowDirection} flowDirection
- * @returns {Pattern}
+ * @returns {PatternCallback}
  */
 function isDirtFlowing(flowDirection) {
   return (tile) =>
@@ -235,7 +226,7 @@ function isLivingPlayer(tile) {
  * Whether a tile is a player moving in a specific direction
  *
  * @param {LivingPlayerTile["inputDirection"]} inputDirection
- * @returns {Pattern}
+ * @returns {PatternCallback}
  */
 function isMovingPlayer(inputDirection) {
   return (tile) =>
@@ -245,11 +236,17 @@ function isMovingPlayer(inputDirection) {
 }
 
 /**
- * @typedef {[0 | 1 | 2, 0 | 1 | 2]} RegionPoint
+ * @typedef {(
+ *           [2, 0] |
+ *       [1 | 2 | 3, 1] |
+ *   [0 | 1 | 2 | 3 | 4, 2] |
+ *       [1 | 2 | 3, 3]
+ * )} RegionPoint
  * @typedef {[
- *   Tile, Tile, Tile,
- *   Tile, Tile, Tile,
- *   Tile, Tile, Tile
+ *               [Tile],
+ *         [Tile, Tile, Tile],
+ *   [Tile, Tile, Tile, Tile, Tile],
+ *         [Tile, Tile, Tile],
  * ]} TileRegion
  *
  * @typedef {(
@@ -294,7 +291,13 @@ function deadPlayer() {
  */
 function movedPlayer(originalLocation) {
   return (region) => {
-    const tile = region[originalLocation[0] + 3 * originalLocation[1]];
+    const tile = region[originalLocation[1]][originalLocation[0]];
+    if (!tile) {
+      throw new Error(
+        `Invalid region point (${originalLocation[0]}, ${originalLocation[1]})`
+      );
+    }
+
     if (tile.type !== "Player") {
       throw new Error(
         `Expected player tile at (${originalLocation[0]}, ${originalLocation[1]}) but got ${tile.type}`
@@ -350,15 +353,24 @@ function water(flowDirection) {
 }
 
 /**
+ * @typedef {PatternCallback | null} Pattern
+ *
  * @typedef {[
- *   Pattern, Pattern, Pattern,
- *   Pattern, Pattern, Pattern,
- *   Pattern, Pattern, Pattern
+ *                     [Pattern],
+ *            [Pattern, Pattern, Pattern],
+ *   [Pattern, Pattern, Pattern, Pattern, Pattern],
+ *            [Pattern, Pattern, Pattern],
  * ]} PatternRegion
+ *
+ * Because the simulation works bottom to top and right to left the tile in
+ * the center of the tile update region must be a tile that is actually
+ * updated. Conceptually, this is the tile that is being looked at by the
+ * pattern region and is the subject of the entire pattern.
+ *
  * @typedef {[
- *   TileUpdate, TileUpdate, TileUpdate,
- *   TileUpdate, TileUpdate, TileUpdate,
- *   TileUpdate, TileUpdate, TileUpdate
+ *                           [TileUpdate],
+ *               [TileUpdate, TileUpdate, TileUpdate],
+ *   [TileUpdate, TileUpdate, TileUpdateCallback],
  * ]} TileUpdateRegion
  */
 
@@ -367,781 +379,858 @@ export const patterns = [
   [
     "Down conveyors move players down",
     [
-      any, any, any,
-      any, isConveyoredPlayer("Down"), any,
-      any, isEmptyForPlayer, any,
+      [null],
+      [null, isConveyoredPlayer("Down"), null],
+      [null, null, isEmptyForPlayer, null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, empty, null,
-      null, movedPlayer([1, 1]), null,
+      [null],
+      [null, empty, null],
+      [null, null, movedPlayer([1, 1])],
     ],
   ],
   [
     "Down conveyored players kill other players",
     [
-      any, any, any,
-      any, isConveyoredPlayer("Down"), any,
-      any, and(isLivingPlayer, not(isConveyoredPlayer("Down"))), any,
+      [null],
+      [null, isConveyoredPlayer("Down"), null],
+      [null, null, and(isLivingPlayer, not(isConveyoredPlayer("Down"))), null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, deadPlayer, null,
-      null, deadPlayer, null,
+      [null],
+      [null, deadPlayer, null],
+      [null, null, deadPlayer],
     ],
   ],
   [
     "Down conveyored players crash",
     [
-      any, any, any,
-      any, and(isLivingPlayer, isConveyoredPlayer("Down")), any,
-      any, not(isEmptyForPlayer), any,
+      [null],
+      [null, null, null],
+      [null, null, and(isLivingPlayer, isConveyoredPlayer("Down")), null, null],
+      [null, not(isEmptyForPlayer), null],
     ],
     [
-      null, null, null,
-      null, deadPlayer, null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, deadPlayer],
     ],
   ],
   [
     "Left conveyors move players left",
     [
-      any, any, any,
-      isEmptyForPlayer, isConveyoredPlayer("Left"), any,
-      any, any, any,
+      [null],
+      [null, null, null],
+      [null, isEmptyForPlayer, isConveyoredPlayer("Left"), null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      movedPlayer([1, 1]), empty, null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, movedPlayer([2, 2]), empty],
     ],
   ],
   [
     "Left conveyored players move rocks",
     [
-      any, any, any,
-      isEmptyForRock, isTile({ type: "Rock" }), isConveyoredPlayer("Left"),
-      any, any, any,
+      [null],
+      [null, null, null],
+      [isEmptyForRock, isTile({ type: "Rock" }), isConveyoredPlayer("Left"), null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      rock("None"), movedPlayer([2, 1]), empty,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [rock("None"), movedPlayer([2, 2]), empty],
     ],
   ],
   [
     "Left pushed rocks kill players",
     [
-      any, any, any,
-      isLivingPlayer, isTile({ type: "Rock" }), isConveyoredPlayer("Left"),
-      any, any, any,
+      [null],
+      [null, null, null],
+      [isLivingPlayer, isTile({ type: "Rock" }), isConveyoredPlayer("Left"), null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      deadPlayer, null, deadPlayer,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [deadPlayer, null, deadPlayer],
     ],
   ],
   [
     "Left conveyored players kill other players",
     [
-      any, any, any,
-      and(isLivingPlayer, not(isConveyoredPlayer("Left"))), isConveyoredPlayer("Left"), any,
-      any, any, any,
+      [null],
+      [null, null, null],
+      [null, and(isLivingPlayer, not(isConveyoredPlayer("Left"))), isConveyoredPlayer("Left"), null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      deadPlayer, deadPlayer, null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, deadPlayer, deadPlayer],
     ],
   ],
   [
     "Left conveyored players crash",
     [
-      any, any, any,
-      any, not(isEmptyForPlayer), and(isLivingPlayer, isConveyoredPlayer("Left")),
-      any, any, any,
+      [null],
+      [null, null, null],
+      [null, not(isEmptyForPlayer), and(isLivingPlayer, isConveyoredPlayer("Left")), null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, null, deadPlayer,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, deadPlayer],
     ],
   ],
   [
     "Right conveyors move players right",
     [
-      any, any, any,
-      any, isConveyoredPlayer("Right"), isEmptyForPlayer,
-      any, any, any,
+      [null],
+      [null, null, null],
+      [null, isConveyoredPlayer("Right"), isEmptyForPlayer, null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, empty, movedPlayer([1, 1]),
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, empty, movedPlayer([1, 2])],
     ],
   ],
   [
     "Right conveyored players move rocks",
     [
-      any, any, any,
-      isConveyoredPlayer("Right"), isTile({ type: "Rock" }), isEmptyForRock,
-      any, any, any,
+      [null],
+      [null, null, null],
+      [isConveyoredPlayer("Right"), isTile({ type: "Rock" }), isEmptyForRock, null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      empty, movedPlayer([0, 1]), rock("None"),
-      null, null, null,
+      [null],
+      [null, null, null],
+      [empty, movedPlayer([0, 2]), rock("None")],
     ],
   ],
   [
     "Right pushed rocks kill players",
     [
-      any, any, any,
-      isConveyoredPlayer("Right"), isTile({ type: "Rock" }), isLivingPlayer,
-      any, any, any,
+      [null],
+      [null, null, null],
+      [isConveyoredPlayer("Right"), isTile({ type: "Rock" }), isLivingPlayer, null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      deadPlayer, null, deadPlayer,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [deadPlayer, null, deadPlayer],
     ],
   ],
   [
     "Right conveyored players kill other players",
     [
-      any, any, any,
-      any, isConveyoredPlayer("Right"), and(isLivingPlayer, not(isConveyoredPlayer("Right"))),
-      any, any, any,
+      [null],
+      [null, null, null],
+      [null, isConveyoredPlayer("Right"), and(isLivingPlayer, not(isConveyoredPlayer("Right"))), null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, deadPlayer, deadPlayer,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, deadPlayer, deadPlayer],
     ],
   ],
   [
     "Right conveyored players crash",
     [
-      any, any, any,
-      any, and(isLivingPlayer, isConveyoredPlayer("Right")), not(isEmptyForPlayer),
-      any, any, any,
+      [null],
+      [null, null, null],
+      [null, null, and(isLivingPlayer, isConveyoredPlayer("Right")), not(isEmptyForPlayer), null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, deadPlayer, null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, deadPlayer],
     ],
   ],
   [
     "Up conveyors move players up",
     [
-      any, isEmptyForPlayer, any,
-      any, isConveyoredPlayer("Up"), any,
-      any, any, any,
+      [null],
+      [null, isEmptyForPlayer, null],
+      [null, null, isConveyoredPlayer("Up"), null, null],
+      [null, null, null],
     ],
     [
-      null, movedPlayer([1, 1]), null,
-      null, empty, null,
-      null, null, null,
+      [null],
+      [null, movedPlayer([2, 2]), null],
+      [null, null, empty],
     ],
   ],
   [
     "Falling rocks kill up-conveyed players",
     [
-      any, isEmptyForRock, any,
-      any, isFallingRock, any,
-      any, and(isLivingPlayer, isConveyoredPlayer("Up")), any,
+      [isEmptyForRock],
+      [null, isFallingRock, null],
+      [null, null, and(isLivingPlayer, isConveyoredPlayer("Up")), null, null],
+      [null, null, null],
     ],
     [
-      null, rock("None"), null,
-      null, deadPlayer, null,
-      null, empty, null,
+      [rock("None")],
+      [null, deadPlayer, null],
+      [null, null, empty],
     ],
   ],
   [
     "Up conveyored players move rocks",
     [
-      any, isEmptyForRock, any,
-      any, isTile({ type: "Rock" }), any,
-      any, isConveyoredPlayer("Up"), any,
+      [isEmptyForRock],
+      [null, isTile({ type: "Rock" }), null],
+      [null, null, isConveyoredPlayer("Up"), null, null],
+      [null, null, null],
     ],
     [
-      null, rock("None"), null,
-      null, movedPlayer([1, 2]), null,
-      null, empty, null,
+      [rock("None")],
+      [null, movedPlayer([2, 2]), null],
+      [null, null, empty],
     ],
   ],
   [
     "Up pushed rocks kill players",
     [
-      any, isLivingPlayer, any,
-      any, isTile({ type: "Rock" }), any,
-      any, isConveyoredPlayer("Up"), any,
+      [isLivingPlayer],
+      [null, isTile({ type: "Rock" }), null],
+      [null, null, isConveyoredPlayer("Up"), null, null],
+      [null, null, null],
     ],
     [
-      null, deadPlayer, null,
-      null, null, null,
-      null, deadPlayer, null,
+      [deadPlayer],
+      [null, null, null],
+      [null, null, deadPlayer],
     ],
   ],
   [
     "Up conveyored players kill other players",
     [
-      any, and(isLivingPlayer, not(isConveyoredPlayer("Up"))), any,
-      any, isConveyoredPlayer("Up"), any,
-      any, any, any,
+      [null],
+      [null, and(isLivingPlayer, not(isConveyoredPlayer("Up"))), null],
+      [null, null, isConveyoredPlayer("Up"), null, null],
+      [null, null, null],
     ],
     [
-      null, deadPlayer, null,
-      null, deadPlayer, null,
-      null, null, null,
+      [null],
+      [null, deadPlayer, null],
+      [null, null, deadPlayer],
     ],
   ],
   [
     "Up conveyored players crash",
     [
-      any, any, any,
-      any, not(isEmptyForPlayer), any,
-      any, and(isLivingPlayer, isConveyoredPlayer("Up")), any,
+      [null],
+      [null, not(isEmptyForPlayer), null],
+      [null, null, and(isLivingPlayer, isConveyoredPlayer("Up")), null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, null, null,
-      null, deadPlayer, null,
+      [null],
+      [null, null, null],
+      [null, null, deadPlayer],
     ],
   ],
   [
     "Rocks fall down",
     [
-      any, any, any,
-      any, isTile({ type: "Rock" }), any,
-      any, isEmptyForRock, any,
+      [null],
+      [null, isTile({ type: "Rock" }), null],
+      [null, null, isEmptyForRock, null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, empty, null,
-      null, rock("Down"), null,
+      [null],
+      [null, empty, null],
+      [null, null, rock("Down")],
     ],
   ],
   [
     "Rocks that fall down kill players and stop",
     [
-      any, any, any,
-      any, isFallingRock, any,
-      any, isLivingPlayer, any,
+      [null],
+      [null, isFallingRock, null],
+      [null, null, isLivingPlayer, null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, rock("None"), null,
-      null, deadPlayer, null,
+      [null],
+      [null, rock("None"), null],
+      [null, null, deadPlayer],
     ],
   ],
   [
     "Rocks fall left off a hard surface",
     [
-      any, any, any,
-      isEmptyForRock, isFallingRock, any,
-      isEmptyForRock, not(isEmptyForRock), any,
+      [null],
+      [null, isEmptyForRock, isFallingRock],
+      [null, null, isEmptyForRock, not(isEmptyForRock), null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, empty, null,
-      rock("DownLeft"), null, null,
+      [null],
+      [null, null, empty],
+      [null, null, rock("DownLeft")],
     ],
   ],
   [
     "Rocks falling left kill a player and stop",
     [
-      any, any, any,
-      isEmptyForRock, isFallingRock, any,
-      isLivingPlayer, not(isEmptyForRock), any,
+      [null],
+      [null, isEmptyForRock, isFallingRock],
+      [null, null, isLivingPlayer, not(isEmptyForRock), null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, rock("None"), null,
-      deadPlayer, null, null,
+      [null],
+      [null, null, rock("None")],
+      [null, null, deadPlayer],
     ],
   ],
   [
     "Rocks fall right off a hard surface",
     [
-      any, any, any,
-      any, isFallingRock, isEmptyForRock,
-      any, not(isEmptyForRock), isEmptyForRock,
+      [null],
+      [isFallingRock, isEmptyForRock, null],
+      [null, not(isEmptyForRock), isEmptyForRock, null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, empty, null,
-      null, null, rock("DownRight"),
+      [null],
+      [empty, null, null],
+      [null, null, rock("DownRight")],
     ],
   ],
   [
     "Rocks falling right kill a player and stop",
     [
-      any, any, any,
-      any, isFallingRock, isEmptyForRock,
-      any, not(isEmptyForRock), isLivingPlayer,
+      [null],
+      [isFallingRock, isEmptyForRock, null],
+      [null, not(isEmptyForRock), isLivingPlayer, null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, rock("None"), null,
-      null, null, deadPlayer,
+      [null],
+      [rock("None"), null, null],
+      [null, null, deadPlayer],
     ],
   ],
   [
     "Falling rocks stop if there is no where to fall",
     [
-      any, any, any,
-      any, isFallingRock, any,
-      any, any, any,
+      [null],
+      [null, null, null],
+      [null, null, isFallingRock, null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, rock("None"), null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, rock("None")],
     ],
   ],
   [
     "Water flows down",
     [
-      any, or(isTile({ type: "Water" }), isWaterloggedDirt), any,
-      any, isTile({ type: "Empty" }), any,
-      any, any, any,
+      [null],
+      [null, or(isTile({ type: "Water" }), isWaterloggedDirt), null],
+      [null, null, isTile({ type: "Empty" }), null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, water("Down"), null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, water("Down")],
     ],
   ],
   [
     "Water onto a surface",
     [
-      any, or(isTile({ type: "Water" }), isWaterloggedDirt), any,
-      any, isTile({ type: "Empty" }), any,
-      any, isSolidForWater, any,
+      [null],
+      [null, or(isTile({ type: "Water" }), isWaterloggedDirt), null],
+      [null, null, isTile({ type: "Empty" }), null, null],
+      [null, isSolidForWater, null],
     ],
     [
-      null, null, null,
-      null, water("Both"), null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, water("Both")],
     ],
   ],
   [
     "Down-flowing water kills a player",
     [
-      any, any, any,
-      any, or(isTile({ type: "Water" }), isWaterloggedDirt), any,
-      any, isLivingPlayer, any,
+      [null],
+      [null, or(isTile({ type: "Water" }), isWaterloggedDirt), null],
+      [null, null, isLivingPlayer, null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, null, null,
-      null, deadPlayer, null,
+      [null],
+      [null, null, null],
+      [null, null, deadPlayer],
     ],
   ],
   [
     "Down-ward flowing water converts to both when a surface is below it",
     [
-      any, any, any,
-      any, isFlowingWater("Down"), any,
-      any, isSolidForWater, any,
+      [null],
+      [null, null, null],
+      [null, null, isFlowingWater("Down"), null, null],
+      [null, isSolidForWater, null],
     ],
     [
-      null, null, null,
-      null, water("Both"), null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, water("Both")],
     ],
   ],
   [
     "Both-ward flowing water converts to down when no surface is below it",
     [
-      any, any, any,
-      any, isFlowingWater("Both"), any,
-      any, not(isSolidForWater), any,
+      [null],
+      [null, null, null],
+      [null, null, isFlowingWater("Both"), null, null],
+      [null, not(isSolidForWater), null],
     ],
     [
-      null, null, null,
-      null, water("Down"), null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, water("Down")],
     ],
   ],
   [
     "Water spreads right",
     [
-      any, any, any,
-      any, supportsFlowDirection("Right"), isTile({ type: "Empty" }),
-      any, isSolidForWater, any,
+      [null],
+      [null, null, null],
+      [null, supportsFlowDirection("Right"), isTile({ type: "Empty" }), null, null],
+      [isSolidForWater, null, null],
     ],
     [
-      null, null, null,
-      null, null, water("Right"),
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, water("Right")],
     ],
   ],
   [
     "Right-flowing water kills a player",
     [
-      any, any, any,
-      any, or(isTile({ type: "Water" }), isWaterloggedDirt), isLivingPlayer,
-      any, isSolidForWater, any,
+      [null],
+      [null, null, null],
+      [null, or(isTile({ type: "Water" }), isWaterloggedDirt), isLivingPlayer, null, null],
+      [isSolidForWater, null, null],
     ],
     [
-      null, null, null,
-      null, null, deadPlayer,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, deadPlayer],
     ],
   ],
   [
     "Water spreads left",
     [
-      any, any, any,
-      any, isTile({ type: "Empty" }), and(supportsFlowDirection("Left"), not(wasJustUpdated)),
-      any, any, isSolidForWater,
+      [null],
+      [null, null, null],
+      [null, null, isTile({ type: "Empty" }), and(supportsFlowDirection("Left"), not(wasJustUpdated)), null],
+      [null, null, isSolidForWater],
     ],
     [
-      null, null, null,
-      null, water("Left"), null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, water("Left")],
     ],
   ],
   [
     "Left-flowing water kills a player",
     [
-      any, any, any,
-      any, isLivingPlayer, and(or(isTile({ type: "Water" }), isWaterloggedDirt), not(wasJustUpdated)),
-      any, any, isSolidForWater,
+      [null],
+      [null, null, null],
+      [null, null, isLivingPlayer, and(or(isTile({ type: "Water" }), isWaterloggedDirt), not(wasJustUpdated)), null],
+      [null, null, isSolidForWater],
     ],
     [
-      null, null, null,
-      null, deadPlayer, null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, deadPlayer],
     ],
   ],
   [
     "Both-flowing and down-flowing water dries if it doesn't have a source" +
     " or down-flowing water above it",
     [
-      any, not(or(isTile({ type: "Water" }), isWaterloggedDirt)), any,
-      any, or(isFlowingWater("Both"), isFlowingWater("Down")), any,
-      any, any, any,
+      [null],
+      [null, not(or(isTile({ type: "Water" }), isWaterloggedDirt)), null],
+      [null, null, or(isFlowingWater("Both"), isFlowingWater("Down")), null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, empty, null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, empty],
     ],
   ],
   [
     "Right-flowing water dries if it doesn't have a source or right-flowing" +
     " water to its right",
     [
-      any, any, any,
-      not(supportsFlowDirection("Right")), isFlowingWater("Right"), any,
-      any, any, any,
+      [null],
+      [null, null, null],
+      [null, not(supportsFlowDirection("Right")), isFlowingWater("Right"), null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, empty, null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, empty],
     ],
   ],
   [
     "Left-flowing water dries if it doesn't have a source or left-flowing" +
     " water to its left",
     [
-      any, any, any,
-      any, isFlowingWater("Left"), and(not(supportsFlowDirection("Left")), not(wasJustUpdated)),
-      any, any, any,
+      [null],
+      [null, null, null],
+      // TODO: THIS ALSO CAUSES LEFT WATER TO WAIT IF THE SIDE IS A ROCK THAT FELL
+      [null, null, isFlowingWater("Left"), and(not(supportsFlowDirection("Left")), not(wasJustUpdated)), null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, empty, null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, empty],
     ],
   ],
   [
     "Water waterlogs dirt from the top",
     [
-      any, or(isTile({ type: "Water" }), isWaterloggedDirt), any,
-      any, isTile({ type: "Dirt", flowDirection: "None" }), any,
-      any, not(isSolidForWater), any,
+      [null],
+      [null, or(isTile({ type: "Water" }), isWaterloggedDirt), null],
+      [null, null, isTile({ type: "Dirt", flowDirection: "None" }), null, null],
+      [null, not(isSolidForWater), null],
     ],
     [
-      null, null, null,
-      null, dirt("Down"), null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, dirt("Down")],
     ],
   ],
   [
     "Waterlogged dirt flows onto a surface",
     [
-      any, or(isTile({ type: "Water" }), isWaterloggedDirt), any,
-      any, isTile({ type: "Dirt", flowDirection: "None" }), any,
-      any, isSolidForWater, any,
+      [null],
+      [null, or(isTile({ type: "Water" }), isWaterloggedDirt), null],
+      [null, null, isTile({ type: "Dirt", flowDirection: "None" }), null, null],
+      [null, isSolidForWater, null],
     ],
     [
-      null, null, null,
-      null, dirt("Both"), null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, dirt("Both")],
     ],
   ],
   [
     "Down-ward flowing waterlogged dirt converts to both when a surface is" +
     " below it",
     [
-      any, any, any,
-      any, isDirtFlowing("Down"), any,
-      any, isSolidForWater, any,
+      [null],
+      [null, null, null],
+      [null, null, isDirtFlowing("Down"), null, null],
+      [null, isSolidForWater, null],
     ],
     [
-      null, null, null,
-      null, dirt("Both"), null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, dirt("Both")],
     ],
   ],
   [
     "Both-ward flowing waterlogged dirt converts to down when no surface is" +
     " below it",
     [
-      any, any, any,
-      any, isDirtFlowing("Both"), any,
-      any, not(isSolidForWater), any,
+      [null],
+      [null, null, null],
+      [null, null, isDirtFlowing("Both"), null, null],
+      [null, not(isSolidForWater), null],
     ],
     [
-      null, null, null,
-      null, dirt("Down"), null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, dirt("Down")],
     ],
   ],
   [
     "Water waterlogs to the right",
     [
-      any, any, any,
-      any, supportsFlowDirection("Right"), isTile({ type: "Dirt", flowDirection: "None" }),
-      any, isSolidForWater, any,
+      [null],
+      [null, null, null],
+      [null, supportsFlowDirection("Right"), isTile({ type: "Dirt", flowDirection: "None" }), null, null],
+      [isSolidForWater, null, null],
     ],
     [
-      null, null, null,
-      null, null, dirt("Right"),
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, dirt("Right")],
     ],
   ],
   [
     "Water waterlogs to the left",
     [
-      any, any, any,
-      any, isTile({ type: "Dirt", flowDirection: "None" }), and(or(isTile({ type: "Water" }), isWaterloggedDirt), not(wasJustUpdated)),
-      any, any, isSolidForWater,
+      [null],
+      [null, null, null],
+      [null, null, isTile({ type: "Dirt", flowDirection: "None" }), and(or(isTile({ type: "Water" }), isWaterloggedDirt), not(wasJustUpdated)), null],
+      [null, null, isSolidForWater],
     ],
     [
-      null, null, null,
-      null, dirt("Left"), null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, dirt("Left")],
     ],
   ],
   [
     "Both-flowing and down-flowing water dries if it doesn't have a source" +
     " or down-flowing water above it",
     [
-      any, not(or(isTile({ type: "Water" }), isWaterloggedDirt)), any,
-      any, or(isDirtFlowing("Both"), isDirtFlowing("Down")), any,
-      any, any, any,
+      [null],
+      [null, not(or(isTile({ type: "Water" }), isWaterloggedDirt)), null],
+      [null, null, or(isDirtFlowing("Both"), isDirtFlowing("Down")), null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, dirt("None"), null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, dirt("None")],
     ],
   ],
   [
     "Right-flowing water dries if it doesn't have a source or right-flowing" +
     " water to its right",
     [
-      any, any, any,
-      not(supportsFlowDirection("Right")), isDirtFlowing("Right"), any,
-      any, any, any,
+      [null],
+      [null, null, null],
+      [null, not(supportsFlowDirection("Right")), isDirtFlowing("Right"), null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, dirt("None"), null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, dirt("None")],
     ],
   ],
   [
     "Left-flowing water dries if it doesn't have a source or left-flowing" +
     " water to its left",
     [
-      any, any, any,
-      any, isDirtFlowing("Left"), and(not(supportsFlowDirection("Left")), not(wasJustUpdated)),
-      any, any, any,
+      [null],
+      [null, null, null],
+      // TODO: SAME ISSUE AS WITH WATER
+      [null, null, isDirtFlowing("Left"), and(not(supportsFlowDirection("Left")), not(wasJustUpdated)), null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, dirt("None"), null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, dirt("None")],
     ],
   ],
   [
     "Down-moving players move into empty spaces",
     [
-      any, any, any,
-      any, isMovingPlayer("Down"), any,
-      any, isEmptyForPlayer, any,
+      [null],
+      [null, isMovingPlayer("Down"), null],
+      [null, null, isEmptyForPlayer, null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, empty, null,
-      null, movedPlayer([1, 1]), null,
+      [null],
+      [null, empty, null],
+      [null, null, movedPlayer([1, 1])],
     ],
   ],
   [
     "Down-moving players are stopped by non-empty spaces",
     [
-      any, any, any,
-      any, isMovingPlayer("Down"), any,
-      any, not(isEmptyForPlayer), any,
+      [null],
+      [null, null, null],
+      [null, null, isMovingPlayer("Down"), null, null],
+      [null, not(isEmptyForPlayer), null],
     ],
     [
-      null, null, null,
-      null, movedPlayer([1, 1]), null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, movedPlayer([2, 2])],
     ],
   ],
   [
     "Left-moving players move into empty spaces",
     [
-      any, any, any,
-      isEmptyForPlayer, isMovingPlayer("Left"), any,
-      any, any, any,
+      [null],
+      [null, null, null],
+      [null, isEmptyForPlayer, isMovingPlayer("Left"), null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      movedPlayer([1, 1]), empty, null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, movedPlayer([2, 2]), empty],
     ],
   ],
   [
     "Left-moving players push rocks into empty spaces",
     [
-      any, any, any,
-      isEmptyForRock, isStationaryRock, isMovingPlayer("Left"),
-      any, any, any,
+      [null],
+      [null, null, null],
+      [isEmptyForRock, isStationaryRock, isMovingPlayer("Left"), null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      rock("None"), movedPlayer([2, 1]), empty,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [rock("None"), movedPlayer([2, 2]), empty],
     ],
   ],
   [
     "Left-moving players are stopped by non-empty spaces",
     [
-      any, any, any,
-      any, not(isEmptyForPlayer), isMovingPlayer("Left"),
-      any, any, any,
+      [null],
+      [null, null, null],
+      [null, not(isEmptyForPlayer), isMovingPlayer("Left"), null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, null, movedPlayer([2, 1]),
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, movedPlayer([2, 2])],
     ],
   ],
   [
     "Right-moving players move into empty spaces",
     [
-      any, any, any,
-      any, isMovingPlayer("Right"), isEmptyForPlayer,
-      any, any, any,
+      [null],
+      [null, null, null],
+      [null, isMovingPlayer("Right"), isEmptyForPlayer, null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, empty, movedPlayer([1, 1]),
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, empty, movedPlayer([1, 2])],
     ],
   ],
   [
     "Right-moving players push rocks into empty spaces",
     [
-      any, any, any,
-      isMovingPlayer("Right"), isStationaryRock, isEmptyForRock,
-      any, any, any,
+      [null],
+      [null, null, null],
+      [isMovingPlayer("Right"), isStationaryRock, isEmptyForRock, null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      empty, movedPlayer([0, 1]), rock("None"),
-      null, null, null,
+      [null],
+      [null, null, null],
+      [empty, movedPlayer([0, 2]), rock("None")],
     ],
   ],
   [
     "Right-moving players are stopped by non-empty spaces",
     [
-      any, any, any,
-      isMovingPlayer("Right"), not(isEmptyForPlayer), any,
-      any, any, any,
+      [null],
+      [null, null, null],
+      [null, null, isMovingPlayer("Right"), not(isEmptyForPlayer), null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      movedPlayer([0, 1]), null, null,
-      null, null, null,
+      [null],
+      [null, null, null],
+      [null, null, movedPlayer([2, 2])],
     ],
   ],
   [
     "Up-moving players move into empty spaces",
     [
-      any, isEmptyForPlayer, any,
-      any, isMovingPlayer("Up"), any,
-      any, any, any,
+      [null],
+      [null, isEmptyForPlayer, null],
+      [null, null, isMovingPlayer("Up"), null, null],
+      [null, null, null],
     ],
     [
-      null, movedPlayer([1, 1]), null,
-      null, empty, null,
-      null, null, null,
+      [null],
+      [null, movedPlayer([2, 2]), null],
+      [null, null, empty],
     ],
   ],
   [
     "Up-moving players push rocks into empty spaces",
     [
-      any, isEmptyForRock, any,
-      any, isStationaryRock, any,
-      any, isMovingPlayer("Up"), any,
+      [isEmptyForRock],
+      [null, isStationaryRock, null],
+      [null, null, isMovingPlayer("Up"), null, null],
+      [null, null, null],
     ],
     [
-      null, rock("None"), null,
-      null, movedPlayer([1, 2]), null,
-      null, empty, null,
+      [rock("None")],
+      [null, movedPlayer([2, 2]), null],
+      [null, null, empty],
     ],
   ],
   [
     "Up-moving players are stopped by non-emtpy spaces",
     [
-      any, any, any,
-      any, not(isEmptyForPlayer), any,
-      any, isMovingPlayer("Up"), any,
+      [null],
+      [null, not(isEmptyForPlayer), null],
+      [null, null, isMovingPlayer("Up"), null, null],
+      [null, null, null],
     ],
     [
-      null, null, null,
-      null, null, null,
-      null, movedPlayer([1, 2]), null,
+      [null],
+      [null, null, null],
+      [null, null, movedPlayer([2, 2])],
     ],
   ],
 ];
 
 /**
- * Whether a region matches a given tile pattern
+ * Whether a row from a region matches the corresponding row from a pattern
  *
- * @param {TileRegion} region
- * @param {PatternRegion} pattern
+ * @template {number} index
+ * @template {TileRegion[index]} T
+ * @template {PatternRegion[index]} U
+ * @param {T} regionRow
+ * @param {U} patternRegionRow
  */
-function matcher(region, pattern) {
-  for (let index = 0; index < region.length; ++index) {
-    if (!pattern[index](region[index])) {
+function rowsMatch(regionRow, patternRegionRow) {
+  for (let index = 0; index < regionRow.length; ++index) {
+    const pattern = patternRegionRow[index];
+    if (pattern && !pattern(regionRow[index])) {
       return false;
     }
   }
 
   return true;
+}
+
+/**
+ * Whether a region matches a given tile pattern
+ *
+ * @param {TileRegion} region
+ * @param {PatternRegion} patternRegion
+ */
+function matcher(region, patternRegion) {
+  return rowsMatch(region[3], patternRegion[3]) &&
+    rowsMatch(region[2], patternRegion[2]) &&
+    rowsMatch(region[1], patternRegion[1]) &&
+    rowsMatch(region[0], patternRegion[0]);
 }
 
 /**
@@ -1166,7 +1255,7 @@ function reverseSortPoints(points) {
 }
 
 /**
- * Gets the 3x3 region centered at a given point
+ * Gets the 5x5 region centered at a given point
  *
  * @param {Board} board
  * @param {Point} pt
@@ -1174,15 +1263,24 @@ function reverseSortPoints(points) {
  */
 function getPointCenteredRegion(board, pt) {
   return [
-    board.getTile([pt[0] - 1, pt[1] - 1]),
-    board.getTile([pt[0], pt[1] - 1]),
-    board.getTile([pt[0] + 1, pt[1] - 1]),
-    board.getTile([pt[0] - 1, pt[1]]),
-    board.getTile([pt[0], pt[1]]),
-    board.getTile([pt[0] + 1, pt[1]]),
-    board.getTile([pt[0] - 1, pt[1] + 1]),
-    board.getTile([pt[0], pt[1] + 1]),
-    board.getTile([pt[0] + 1, pt[1] + 1]),
+    [board.getTile([pt[0], pt[1] - 2])],
+    [
+      board.getTile([pt[0] - 1, pt[1] - 1]),
+      board.getTile([pt[0], pt[1] - 1]),
+      board.getTile([pt[0] + 1, pt[1] - 1]),
+    ],
+    [
+      board.getTile([pt[0] - 2, pt[1]]),
+      board.getTile([pt[0] - 1, pt[1]]),
+      board.getTile([pt[0], pt[1]]),
+      board.getTile([pt[0] + 1, pt[1]]),
+      board.getTile([pt[0] + 1, pt[1]]),
+    ],
+    [
+      board.getTile([pt[0] - 1, pt[1] + 1]),
+      board.getTile([pt[0], pt[1] + 1]),
+      board.getTile([pt[0] + 1, pt[1] + 1]),
+    ],
   ];
 }
 
@@ -1206,19 +1304,27 @@ function applyTileUpdate(tile, region, tileUpdate) {
  * @param {Board} board
  * @param {Point} pt
  * @param {TileRegion} region
- * @param {TileUpdate[]} updates
+ * @param {TileUpdateRegion} updates
  */
 function applyRegionUpdates(board, pt, region, updates) {
   /** @type {Point[]} */
   const updatedPoints = [];
 
-  for (let y = -1; y < 2; ++y) {
-    for (let x = -1; x < 2; ++x) {
-      const update = updates[(x + 1) + 3 * (y + 1)];
+  for (let rowIndex = 0; rowIndex < 3; ++rowIndex) {
+    let rowOffset = 0;
+    if (rowIndex === 0) {
+      rowOffset = 2;
+    } else if (rowIndex === 1) {
+      rowOffset = 1;
+    }
 
+    const baseX = pt[0] + rowOffset - 2;
+
+    for (let index = 0; index < updates.length; ++index) {
       /** @type {Point} */
-      const currentPoint = [pt[0] + x, pt[1] + y];
+      const currentPoint = [baseX + index, pt[1] + rowIndex - 2];
 
+      const update = updates[rowIndex][index];
       if (update) {
         updatedPoints.push(currentPoint);
 
