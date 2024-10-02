@@ -351,13 +351,13 @@ describe("applyPatternTileUpdates", function () {
         [" ", " ", " "],
         [" ", " ", " "],
         [" ", "Rv", " "],
-        ["R<", "R.", " "],
+        [" ", "R.", "R>"],
       ],
       [
         [" ", " ", " "],
         [" ", " ", " "],
         [" ", " ", " "],
-        ["R.", "R.", "R>"],
+        ["R<", "R.", "R."],
       ],
       [
         [" ", " ", " "],
@@ -408,7 +408,7 @@ describe("applyPatternTileUpdates", function () {
         [" ", " ", " ", " "],
         [" ", " ", " ", " "],
         [" ", " ", " ", " "],
-        [" ", "R<", "R.", " "],
+        [" ", " ", "R.", "R>"],
         ["Rv", "Rv", "W", "Rv"],
         ["Rv", "Rv", " ", "Rv"],
         ["W", " ", " ", " "],
@@ -419,7 +419,7 @@ describe("applyPatternTileUpdates", function () {
         [" ", " ", " ", " "],
         [" ", " ", " ", " "],
         [" ", " ", "R.", " "],
-        ["R.", "Rv", "W", " "],
+        ["R.", " ", "W", "Rv"],
         ["R.", "Rv", " ", "Rv"],
         ["W", "Rv", " ", "Rv"],
         [" ", " ", " ", " "],
@@ -430,7 +430,7 @@ describe("applyPatternTileUpdates", function () {
         [" ", " ", " ", " "],
         [" ", " ", "R.", " "],
         ["R.", " ", "W", " "],
-        ["R.", "Rv", " ", " "],
+        ["R.", " ", " ", "Rv"],
         ["W", "Rv", " ", "Rv"],
         [" ", "Rv", " ", "Rv"],
       ],
@@ -441,7 +441,7 @@ describe("applyPatternTileUpdates", function () {
         [" ", " ", "R.", " "],
         ["R.", " ", "W", " "],
         ["R.", " ", " ", " "],
-        ["W", "R.", "R>", " "],
+        ["W", "R.", " ", "Rv"],
         [" ", "R.", "R<", "R."],
       ],
       [
@@ -451,7 +451,7 @@ describe("applyPatternTileUpdates", function () {
         [" ", " ", "R.", " "],
         ["R.", " ", "W", " "],
         ["R.", " ", " ", " "],
-        ["W", "R.", "R.", " "],
+        ["W", "R.", " ", "R."],
         [" ", "R.", "R.", "R."],
       ],
     ];
@@ -595,11 +595,6 @@ describe("applyPatternTileUpdates", function () {
       ],
       [
         ["~+"],
-        ["~v"],
-        ["Pd"],
-      ],
-      [
-        ["~+"],
         ["~_"],
         ["Pd"],
       ],
@@ -711,13 +706,19 @@ describe("applyPatternTileUpdates", function () {
         [" ", " ", " "],
         [" ", " ", " "],
         ["~<", " ", " "],
-        ["R<", "W", "~_"],
+        ["~_", "W", "R>"],
       ],
       [
         [" ", " ", " "],
         [" ", " ", " "],
         [" ", " ", " "],
-        ["R.", "W", " "],
+        ["~_", "W", "R."],
+      ],
+      [
+        [" ", " ", " "],
+        [" ", " ", " "],
+        [" ", " ", " "],
+        [" ", "W", "R."],
       ],
     ];
 
@@ -930,7 +931,7 @@ describe("applyPatternTileUpdates", function () {
     stabilizeState(state, intermediateBoards);
   });
 
-  it("ensures both-flowing water dry without a down-flowing source", function () {
+  it("ensures both-flowing water dries without a down-flowing source", function () {
     const board = [
       [" ", "R.", " "],
       [" ", " ", " "],
@@ -960,7 +961,7 @@ describe("applyPatternTileUpdates", function () {
         [" ", " ", " "],
         [" ", " ", " "],
         [" ", " ", " "],
-        ["R<", "D.", "~>"],
+        ["~<", "D.", "R>"],
         ["~v", "W", "~v"],
       ],
       [
@@ -968,14 +969,14 @@ describe("applyPatternTileUpdates", function () {
         [" ", " ", " "],
         [" ", " ", " "],
         [" ", "D.", " "],
-        ["Rv", "W", "~_"],
+        ["~_", "W", "Rv"],
       ],
       [
         [" ", " ", " "],
         [" ", " ", " "],
         [" ", " ", " "],
         [" ", "D.", " "],
-        ["R.", "W", " "],
+        [" ", "W", "R."],
       ],
     ];
 
