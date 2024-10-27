@@ -31,7 +31,7 @@ export class State {
     /** @type {Point[]} */
     this.updatedTiles = [];
 
-    this.reset();
+    this.#updateEntireBoard();
   }
 
   get collected() {
