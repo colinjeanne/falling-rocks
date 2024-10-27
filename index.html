@@ -11,7 +11,7 @@
         <button id="play" type="button">Play</button>
         <button id="reset" type="button">Reset</button>
       </div>
-      <canvas id="board" width="640" height="640"></canvas>
+      <game-board tileSize="20" editing="true"></game-board>
       <div id="gameState"></div>
       <div id="builder">
         <div>
@@ -54,156 +54,13 @@
   </body>
   <script type="module">
     import { Board, decodeBoard, encodeBoard } from "./src/board.js";
+    import BoardComponent from "./src/boardComponent.js";
     import { State } from "./src/state.js";
 
+    customElements.define("game-board", BoardComponent);
+
     const tickMs = 250;
-    const tileSize = 20;
     const tiles = new Image();
-
-    function getFlowDirectionText(flowDirection) {
-      switch (flowDirection) {
-        case "All":
-          return "+";
-
-        case "Down":
-          return "D";
-
-        case "Left":
-          return "L";
-
-        case "Right":
-          return "R";
-
-        case "Both":
-          return "B";
-      }
-    }
-
-    function drawArrow(context, x, y, width, height, direction) {
-      context.save();
-
-      context.translate(x + width / 2, y + height / 2);
-      switch (direction) {
-        case "Left":
-          context.rotate(Math.PI / 2);
-          break;
-
-        case "Right":
-          context.rotate(-Math.PI / 2);
-          break;
-
-        case "Up":
-          context.rotate(Math.PI);
-          break;
-      }
-      context.scale(0.75, 0.75);
-
-      context.lineWidth = 2;
-      context.strokeStyle = "grey";
-
-      context.beginPath();
-      context.moveTo(0, -height / 2);
-      context.lineTo(0, height / 2);
-      context.lineTo(-width / 2, 0);
-      context.moveTo(0, height / 2);
-      context.lineTo(width / 2, 0);
-      context.stroke();
-
-      context.restore();
-    }
-
-    function drawTile(context, tile, x, y, width, height) {
-      context.save();
-
-      let tileIndex;
-      if (tile.type === "Empty") {
-        tileIndex = 0;
-      } else if (tile.type === "Wall") {
-        tileIndex = 1;
-      } else if (tile.type === "Collectable") {
-        tileIndex = 2;
-      } else if (tile.type === "Rock") {
-        tileIndex = 3;
-      } else if (tile.type === "Dirt") {
-        tileIndex = 4;
-      } else if (tile.type === "Water" && tile.flowDirection === "All") {
-        tileIndex = 7;
-      } else if (tile.type === "Water" && tile.flowDirection !== "All") {
-        tileIndex = 8;
-      } else if (tile.type === "Player" && tile.isAlive) {
-        tileIndex = 5;
-      } else if (tile.type === "Player" && !tile.isAlive) {
-        tileIndex = 6;
-      } else {
-        throw new Error("Unknown tile");
-      }
-
-      context.drawImage(
-        tiles,
-        0,
-        tiles.naturalWidth * tileIndex,
-        tiles.naturalWidth,
-        tiles.naturalWidth,
-        x,
-        y,
-        width,
-        height
-      );
-
-      switch (tile.conveyorDirection) {
-        case "Down":
-          drawArrow(context, x, y, width, height, "Down");
-          break;
-
-        case "Left":
-          drawArrow(context, x, y, width, height, "Left");
-          break;
-
-        case "Right":
-          drawArrow(context, x, y, width, height, "Right");
-          break;
-
-        case "Up":
-          drawArrow(context, x, y, width, height, "Up");
-          break;
-      }
-
-      if (tile.type === "Water") {
-        const text = getFlowDirectionText(tile.flowDirection);
-        context.strokeText(text, x + width / 4, y + height / 2);
-      } else if (tile.type === "Dirt" && tile.flowDirection !== "None") {
-        const text = getFlowDirectionText(tile.flowDirection);
-        context.strokeText(text, x + width / 4, y + height / 2);
-      }
-
-      context.restore();
-    }
-
-    function renderBoard(canvas, board, updatedPoints) {
-      const context = canvas.getContext("2d");
-
-      const tileWidth = canvas.width / board.width;
-      const tileHeight = canvas.height / board.height;
-
-      if (updatedPoints === undefined) {
-        updatedPoints = [];
-        for (let x = 0; x < board.width; ++x) {
-          for (let y = 0; y < board.height; ++y) {
-            updatedPoints.push([x, y]);
-          }
-        }
-      }
-
-      const pointsWithTiles = updatedPoints.map(([x, y]) => ({
-        x,
-        y,
-        tile: board.getTile([x, y]),
-      }));
-
-      pointsWithTiles.forEach(({x, y, tile}) => {
-        drawTile(context, tile, x * tileWidth, y * tileHeight, tileWidth, tileHeight);
-      });
-    }
 
     /**
      * Creates a generic version of the given tile
@@ -254,30 +111,7 @@
       }
     }
 
-    function updateTile(mouseEvent) {
-      const tileWidth = boardElement.width / board.width;
-      const tileHeight = boardElement.height / board.height;
-
-      const tileX = Math.floor(mouseEvent.offsetX / tileWidth);
-      const tileY = Math.floor(mouseEvent.offsetY / tileHeight);
-
-      const tile = selectedTileInput.selectedOptions[0].value;
-      const originalTile = board.getTile([tileX, tileY]);
-
-      const conveyorDirection =
-        selectedConveyorDirectionInput.selectedOptions[0].value;
-
-      if (
-        (tile !== originalTile.type) ||
-        (conveyorDirection !== originalTile.conveyorDirection)
-      ) {
-        board.setTile([tileX, tileY], createTile(tile, conveyorDirection));
-        generatedBoardOutput.value = encodeBoard(board);
-        renderBoard(boardElement, board, [[tileX, tileY]]);
-      }
-    }
-
-    const boardElement = document.getElementById("board");
+    const boardElement = document.querySelector("game-board");
     const widthInput = document.getElementById("widthInput");
     const heightInput = document.getElementById("heightInput");
     const selectedTileInput = document.getElementById("selectedTile");
@@ -292,21 +126,10 @@
     const loadBoard = document.getElementById("loadBoard");
     const resetButton = document.getElementById("reset");
 
-    let board;
     let state;
 
-    function updateUIWithBoard(board) {
-      generatedBoardOutput.value = encodeBoard(board);
-      boardElement.width = board.width * tileSize;
-      boardElement.height = board.height * tileSize;
-      widthInput.value = board.width;
-      heightInput.value = board.height;
-      renderBoard(boardElement, board);
-    }
-
     function recreateBoard() {
-      board = new Board(widthInput.valueAsNumber, heightInput.valueAsNumber);
-      updateUIWithBoard(board);
+      boardElement.board = new Board(widthInput.valueAsNumber, heightInput.valueAsNumber);
     }
 
     function renderGameState(state) {
@@ -352,7 +175,7 @@
 
       if (handled) {
         updatedPoints.push(...state.applyUpdates());
-        renderBoard(boardElement, state.board, updatedPoints);
+        boardElement.render(updatedPoints);
         renderGameState(state);
         keyboardEvent.preventDefault(); // Prevent other browser behaviors
 
@@ -363,21 +186,6 @@
     widthInput.addEventListener("change", recreateBoard);
     heightInput.addEventListener("change", recreateBoard);
 
-    let isDragDrawing = false;
-    function enableDragDrawing() {
-      isDragDrawing = true;
-    }
-
-    function disableDragDrawing() {
-      isDragDrawing = false;
-    }
-
-    function updateDraggedTiles(mouseEvent) {
-      if (isDragDrawing) {
-        updateTile(mouseEvent);
-      }
-    }
-
     let timerId = undefined;
     function startGameClock() {
       if (!timerId) {
@@ -385,7 +193,7 @@
           () => {
             if (state.updatedTiles.length > 0) {
               const updatedPoints = state.applyUpdates();
-              renderBoard(boardElement, state.board, updatedPoints);
+              boardElement.render(updatedPoints);
               renderGameState(state);
             } else {
               stopGameClock();
@@ -410,20 +218,21 @@
 
       document.removeEventListener("keydown", handleInput);
 
-      boardElement.addEventListener("mousedown", enableDragDrawing);
-      document.addEventListener("mouseup", disableDragDrawing);
-      boardElement.addEventListener("mousemove", updateDraggedTiles);
-      boardElement.addEventListener("click", updateTile);
-
       stopGameClock();
 
-      renderBoard(boardElement, board);
+      if (state?.originalBoard) {
+        boardElement.board = state.originalBoard;
+      }
+
+      boardElement.setAttribute("editing", "true");
+      boardElement.render();
     });
 
     resetButton.addEventListener("click", () => {
       state.reset();
       startGameClock();
-      renderBoard(boardElement, board);
+      boardElement.board = state.board;
+      boardElement.render();
       renderGameState(state);
     });
 
@@ -435,36 +244,50 @@
       gameStateElement.hidden = false;
       playButton.blur(); // Returns focus to the document
 
-      state = new State(board.clone());
+      state = new State(boardElement.board);
       renderGameState(state);
 
       document.addEventListener("keydown", handleInput);
 
-      boardElement.removeEventListener("mousedown", enableDragDrawing);
-      document.removeEventListener("mouseup", disableDragDrawing);
-      boardElement.removeEventListener("mousemove", updateDraggedTiles);
-      boardElement.removeEventListener("click", updateTile);
-
       startGameClock();
 
-      renderBoard(boardElement, board);
+      boardElement.setAttribute("editing", "false");
+      boardElement.render();
     });
+
+    function updateSelectedTile() {
+      const tile = selectedTileInput.selectedOptions[0].value;
+
+      const conveyorDirection =
+        selectedConveyorDirectionInput.selectedOptions[0].value;
+
+      boardElement.selectedTile = createTile(tile, conveyorDirection);
+    }
+
+    selectedTileInput.addEventListener("change", updateSelectedTile);
+    selectedConveyorDirectionInput.addEventListener("change", updateSelectedTile);
 
     loadBoard.addEventListener("click", () => {
       const encoded = loadedBoard.value;
       try {
-        board = decodeBoard(encoded);
-        updateUIWithBoard(board);
+        boardElement.board = decodeBoard(encoded);
       } catch (e) {
         console.log(e);
       }
     });
 
+    boardElement.addEventListener("change", () => {
+      generatedBoardOutput.value = encodeBoard(boardElement.board);
+      widthInput.value = boardElement.board.width;
+      heightInput.value = boardElement.board.height;
+    });
+
     recreateBoard();
+    updateSelectedTile();
 
     tiles.addEventListener("load", () => {
+      boardElement.tiles = tiles;
       buildButton.click();
-      recreateBoard();
     });
     tiles.src = "assets/tiles.svg";
   </script>
