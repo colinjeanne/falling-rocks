@@ -498,6 +498,61 @@ describe("applyPatternTileUpdates", function () {
     stabilizeState(state, intermediateBoards);
   });
 
+  it("ensures rocks falling down kill a player and roll left", function () {
+    const board = [
+      [" ", "R."],
+      [" ", " "],
+      [" ", "Pa."],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        [" ", " "],
+        [" ", "Rv"],
+        [" ", "Pa."],
+      ],
+      [
+        [" ", " "],
+        [" ", " "],
+        ["R.", "Pd"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("ensures rocks falling down kill a player and roll right", function () {
+    const board = [
+      ["R.", " "],
+      [" ", " "],
+      ["Pa.", " "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        [" ", " "],
+        ["Rv", " "],
+        ["Pa.", " "],
+      ],
+      [
+        [" ", " "],
+        [" ", " "],
+        ["Pd", "R>"],
+      ],
+      [
+        [" ", " "],
+        [" ", " "],
+        ["Pd", "R."],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
   it("ensures rocks falling down left kill a player", function () {
     const board = [
       [" ", "R."],
