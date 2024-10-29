@@ -657,17 +657,17 @@ export const patterns = [
     ],
   ],
   [
-    "Rocks that fall down kill players and stop",
+    "Rocks fall left off of and kill a player",
     [
       [null],
-      [null, isFallingRock, null],
-      [null, null, isLivingPlayer, null, null],
+      [isEmptyForRock, isFallingRock, null],
+      [null, isEmptyForRock, isLivingPlayer, null, null],
       [null, null, null],
     ],
     [
       [null],
-      [null, rock("None"), null],
-      [null, null, deadPlayer],
+      [null, empty, null],
+      [null, rock("DownLeft"), deadPlayer],
     ],
   ],
   [
@@ -699,6 +699,20 @@ export const patterns = [
     ],
   ],
   [
+    "Rocks fall right off of and kill a player",
+    [
+      [null],
+      [isFallingRock, isEmptyForRock, null],
+      [null, isLivingPlayer, isEmptyForRock, null, null],
+      [null, null, null],
+    ],
+    [
+      [null],
+      [empty, null, null],
+      [null, deadPlayer, rock("DownRight")],
+    ],
+  ],
+  [
     "Rocks fall right off a hard surface",
     [
       [null],
@@ -723,6 +737,20 @@ export const patterns = [
     [
       [null],
       [rock("None"), null, null],
+      [null, null, deadPlayer],
+    ],
+  ],
+  [
+    "Rocks that fall down kill players and stop",
+    [
+      [null],
+      [null, isFallingRock, null],
+      [null, null, isLivingPlayer, null, null],
+      [null, null, null],
+    ],
+    [
+      [null],
+      [null, rock("None"), null],
       [null, null, deadPlayer],
     ],
   ],
