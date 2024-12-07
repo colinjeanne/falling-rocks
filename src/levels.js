@@ -69,6 +69,6 @@ export default [
   },
   {
     name: "level-18",
-    serialized: "20;20;1 v2 <4D.<1~+2 9R.1 1 v1Pa.>1 >1R.>1 >1 v1D.^2 1 >9D.>3 v4 <1D.^2 1 ^1 v8~+<1 <2 v1W1R.1 >1 v1D.^2 1 ^1 v9 2 v2 >1R.^1 v1C^2 1 ^2 >1 v7W2 v1 ^1 <1W1 v1C^2 1 ^1R.1 1 >1R.>5~+>1~+v1 v2 >1 ^1W1 >1 ^2 1 ^2W1 1W1 v5 <1 v3 1W1R.3 1 ^2 <2 5D.>2 v2 2~+1W1R.3 1W1 ^2 1D.v4D.<1 <1 v2 3~+1W1D.1W2 >1 ^2 5D.>2 v6W2 1R.^4 1D.v4D.<1 <1 >1C1D.>1C>1D.>4 >1C^4 4C>1Cv1 1W1C1D.<1C<1D.<1 1W7 1Cv4C<1 1W1 v1W2 >1 ^1W7 4C>1Cv1 1W1 v1W1 ^3W7 1Cv4C<1 1W1 v1W1 ^1 <2W6 1W1D.>1D.v1W2D.>1D.v1W1 v2W1D.^1C<1W7 1W2D.>1D.^1W1D.v1W1C1C>1 v1D.>1D.^1W5 7R.1D.v1W1D.>1C>1 >1 ^2W3 1W1 1D.v7D.<7W1 1W1 1W1 7D.>1C",
+    serialized: "20;20;1 v2 <4D.<1~+2 10R.1 v1Pa.>1 >1R.>1 >1 v1D.^2 1 >9D.>1D.v2 v4 <1D.^2 1 ^1 v8~+<1 <2 v1W1R.1 >1 v1D.^2 1 ^1 v9 2 v2 >1R.^1 v1C^2 1 ^2 >1 v7W2 v1 ^1 <1W1 v1C^2 1 ^1R.1 1 >1R.>5~+>1~+v1 v2 >1 ^1W1 >1 ^2 1 ^2W1 1W1D.v4D.<1 <1 v3 1W1R.3 1 ^2 <2 5D.>2 v2 1~+2W1R.3 1W1 ^2 1D.v4D.<1 <1 v2 3~+1W1D.1W2 >1 ^2 5D.>2 v6W2 1R.^4 1D.v4D.<1 <1 >1C1D.>1C>1D.>4 >1C^4 4C>1Cv1 1W1C1D.<1C<1D.<1 1W7 1Cv4C<1 1W1 v1W2 >1 ^1W7 4C>1Cv1 1W1 v1W1 ^3W7 1Cv4C<1 1W1 v1W1 ^1 <2W6 1W1D.>1D.v1W2D.>1D.v1W1 v2W1D.^1C<1W7 1W2D.>1D.^1W1D.v1W1C1C>1 v1D.>1D.^1W5 7R.1D.v1W1D.>1C>1 >1 ^2W3 1W1 1D.v7D.<7W1 1W1 1W1 7D.>1C",
   },
 ];
