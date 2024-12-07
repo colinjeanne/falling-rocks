@@ -105,18 +105,36 @@ export class State {
     this.updatedTiles = [];
     this.#clearJustUpdated();
     for (const pt of updatedPoints) {
-      this.#addUpdatedTile(pt);
-      this.#addUpdatedTile([pt[0] - 1, pt[1]]);
-      this.#addUpdatedTile([pt[0] - 1, pt[1] - 1]);
-      this.#addUpdatedTile([pt[0] - 1, pt[1] + 1]);
-      this.#addUpdatedTile([pt[0] + 1, pt[1]]);
-      this.#addUpdatedTile([pt[0] + 1, pt[1] - 1]);
-      this.#addUpdatedTile([pt[0] + 1, pt[1] + 1]);
-      this.#addUpdatedTile([pt[0], pt[1] - 1]);
-      this.#addUpdatedTile([pt[0], pt[1] + 1]);
+      this.#tileChanged(pt);
     }
 
     return updatedPoints;
+  }
+
+  /**
+   * Marks a tile as changed by adding it and all relevant tiles to the set of
+   * tiles to update
+   *
+   * @param {Point} pt
+   */
+  #tileChanged(pt) {
+    // The point is considered to be the center of the third row of the pattern
+    // triangle. All other tiles in that shape are added
+    this.#addUpdatedTile([pt[0], pt[1] - 2]);
+
+    this.#addUpdatedTile([pt[0] - 1, pt[1] - 1]);
+    this.#addUpdatedTile([pt[0], pt[1] - 1]);
+    this.#addUpdatedTile([pt[0] + 1, pt[1] - 1]);
+
+    this.#addUpdatedTile([pt[0] - 2, pt[1]]);
+    this.#addUpdatedTile([pt[0] - 1, pt[1]]);
+    this.#addUpdatedTile(pt);
+    this.#addUpdatedTile([pt[0] + 1, pt[1]]);
+    this.#addUpdatedTile([pt[0] + 2, pt[1]]);
+
+    this.#addUpdatedTile([pt[0] - 1, pt[1] + 1]);
+    this.#addUpdatedTile([pt[0], pt[1] + 1]);
+    this.#addUpdatedTile([pt[0] + 1, pt[1] + 1]);
   }
 
   /**
@@ -146,11 +164,7 @@ export class State {
             }
           )
           updatedPoints.push(pt);
-          this.#addUpdatedTile(pt);
-          this.#addUpdatedTile([pt[0] - 1, pt[1]]);
-          this.#addUpdatedTile([pt[0] + 1, pt[1]]);
-          this.#addUpdatedTile([pt[0], pt[1] - 1]);
-          this.#addUpdatedTile([pt[0], pt[1] + 1]);
+          this.#tileChanged(pt);
         }
       }
     }
