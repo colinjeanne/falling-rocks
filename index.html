@@ -3,51 +3,68 @@
   <head>
     <title>Rocks</title>
     <meta charset="utf-8">
+    <link href="main.css" rel="stylesheet" />
   </head>
   <body>
     <div>
-      <div>
-        <button id="build" type="button">Build</button>
-        <button id="play" type="button">Play</button>
-        <button id="reset" type="button">Reset</button>
+      <div id="globalMenu">
+        <div>
+          <button id="returnToMain" hidden>Return to Main Menu</button>
+        </div>
+        <div>
+          <button id="volume">🔊</button>
+          <button id="help">?</button>
+        </div>
       </div>
-      <game-board tileSize="20" editing="true"></game-board>
-      <div id="gameState"></div>
-      <div id="builder">
+      <div id="levelSelectionSection">
+        <h1>Isaac's Game</h1>
+        <ol>
+        </ol>
+      </div>
+      <div id="levelSection" hidden>
         <div>
-          <label for="widthInput">Width</label>
-          <input id="widthInput" type="number" min="1" max="64" value="10">
+          <button id="build" type="button">Build</button>
+          <button id="play" type="button">Play</button>
+          <button id="reset" type="button">Reset</button>
         </div>
-        <div>
-          <label for="heightInput">Height</label>
-          <input id="heightInput" type="number" min="1" max="64" value="10">
-        </div>
-        <div>
-          <label for="selectedTile">Tile</label>
-          <select id="selectedTile">
-            <option value="Empty" selected>Empty</option>
-            <option value="Wall">Wall</option>
-            <option value="Collectable">Collectable</option>
-            <option value="Rock">Rock</option>
-            <option value="Dirt">Dirt</option>
-            <option value="Player">Player</option>
-            <option value="Water">Water</option>
-          </select>
-          <label for="selectedConveyorDirection">Conveyor Direction</label>
-          <select id="selectedConveyorDirection">
-            <option value="None" selected>None</option>
-            <option value="Down">Down</option>
-            <option value="Left">Left</option>
-            <option value="Right">Right</option>
-            <option value="Up">Up</option>
-          </select>
-        </div>
-        <div>
-          <output id="generatedBoard"></output>
-        </div>
-        <div>
-          <textarea id="loadedBoard" cols="80"></textarea>
-          <button id="loadBoard" type="button">Load</button>
+        <game-board tileSize="20" editing="true"></game-board>
+        <div id="gameState"></div>
+        <div id="builder">
+          <div>
+            <label for="widthInput">Width</label>
+            <input id="widthInput" type="number" min="1" max="64" value="10">
+          </div>
+          <div>
+            <label for="heightInput">Height</label>
+            <input id="heightInput" type="number" min="1" max="64" value="10">
+          </div>
+          <div>
+            <label for="selectedTile">Tile</label>
+            <select id="selectedTile">
+              <option value="Empty" selected>Empty</option>
+              <option value="Wall">Wall</option>
+              <option value="Collectable">Collectable</option>
+              <option value="Rock">Rock</option>
+              <option value="Dirt">Dirt</option>
+              <option value="Player">Player</option>
+              <option value="Water">Water</option>
+            </select>
+            <label for="selectedConveyorDirection">Conveyor Direction</label>
+            <select id="selectedConveyorDirection">
+              <option value="None" selected>None</option>
+              <option value="Down">Down</option>
+              <option value="Left">Left</option>
+              <option value="Right">Right</option>
+              <option value="Up">Up</option>
+            </select>
+          </div>
+          <div>
+            <output id="generatedBoard"></output>
+          </div>
+          <div>
+            <textarea id="loadedBoard" cols="80"></textarea>
+            <button id="loadBoard" type="button">Load</button>
+          </div>
         </div>
       </div>
     </div>
@@ -55,12 +72,41 @@
   <script type="module">
     import { Board, decodeBoard, encodeBoard } from "./src/board.js";
     import BoardComponent from "./src/boardComponent.js";
+    import Levels from "./src/levels.js";
     import { State } from "./src/state.js";
 
     customElements.define("game-board", BoardComponent);
 
     const tickMs = 250;
     const tiles = new Image();
+
+    /**
+     * Generates the level selection buttons
+     *
+     * @param {HTMLElement} levelSelectionSection
+     * @param {HTMLElement} levelSection
+     * */
+    function generateLevelButtons(levelSelectionSection, levelSection, returnToMainElement, boardElement, levels) {
+      const list = levelSelectionSection.querySelector("ol");
+
+      for (const level of levels) {
+        const button = document.createElement("button");
+        button.textContent = level.name;
+
+        button.addEventListener("click", () => {
+          try {
+            levelSelectionSection.hidden = true;
+            levelSelection.hidden = false;
+            returnToMainElement.hidden = false;
+            boardElement.board = decodeBoard(level.serialized);
+          } catch (e) {
+            console.log(e);
+          }
+        });
+
+        list.appendChild(button);
+      }
+    }
 
     /**
      * Creates a generic version of the given tile
@@ -111,6 +157,9 @@
       }
     }
 
+    const returnToMainElement = document.getElementById("returnToMain");
+    const levelSelectionSection = document.getElementById("levelSelectionSection");
+    const levelSelection = document.getElementById("levelSection");
     const boardElement = document.querySelector("game-board");
     const widthInput = document.getElementById("widthInput");
     const heightInput = document.getElementById("heightInput");
@@ -127,6 +176,12 @@
     const resetButton = document.getElementById("reset");
 
     let state;
+
+    returnToMainElement.addEventListener("click", () => {
+      levelSelectionSection.hidden = false;
+      levelSection.hidden = true;
+      returnToMainElement.hidden = true;
+    });
 
     function recreateBoard() {
       boardElement.board = new Board(widthInput.valueAsNumber, heightInput.valueAsNumber);
@@ -290,5 +345,7 @@
       buildButton.click();
     });
     tiles.src = "assets/tiles.svg";
+
+    generateLevelButtons(levelSelectionSection, levelSelection, returnToMainElement, boardElement, Levels);
   </script>
 </html>
