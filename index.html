@@ -18,8 +18,7 @@
       </div>
       <div id="levelSelectionSection">
         <h1>Isaac's Game</h1>
-        <ol>
-        </ol>
+        <level-select></level-select>
       </div>
       <div id="levelSection" hidden>
         <div>
@@ -72,41 +71,14 @@
   <script type="module">
     import { Board, decodeBoard, encodeBoard } from "./src/board.js";
     import BoardComponent from "./src/boardComponent.js";
-    import Levels from "./src/levels.js";
+    import LevelSelectComponent from "./src/levelSelectComponent.js";
     import { State } from "./src/state.js";
 
     customElements.define("game-board", BoardComponent);
+    customElements.define("level-select", LevelSelectComponent);
 
     const tickMs = 250;
     const tiles = new Image();
-
-    /**
-     * Generates the level selection buttons
-     *
-     * @param {HTMLElement} levelSelectionSection
-     * @param {HTMLElement} levelSection
-     * */
-    function generateLevelButtons(levelSelectionSection, levelSection, returnToMainElement, boardElement, levels) {
-      const list = levelSelectionSection.querySelector("ol");
-
-      for (const level of levels) {
-        const button = document.createElement("button");
-        button.textContent = level.name;
-
-        button.addEventListener("click", () => {
-          try {
-            levelSelectionSection.hidden = true;
-            levelSelection.hidden = false;
-            returnToMainElement.hidden = false;
-            boardElement.board = decodeBoard(level.serialized);
-          } catch (e) {
-            console.log(e);
-          }
-        });
-
-        list.appendChild(button);
-      }
-    }
 
     /**
      * Creates a generic version of the given tile
@@ -161,6 +133,7 @@
     const levelSelectionSection = document.getElementById("levelSelectionSection");
     const levelSelection = document.getElementById("levelSection");
     const boardElement = document.querySelector("game-board");
+    const levelSelectElement = document.querySelector("level-select");
     const widthInput = document.getElementById("widthInput");
     const heightInput = document.getElementById("heightInput");
     const selectedTileInput = document.getElementById("selectedTile");
@@ -337,6 +310,13 @@
       heightInput.value = boardElement.board.height;
     });
 
+    levelSelectElement.addEventListener("levelSelected", (e) => {
+      levelSelectionSection.hidden = true;
+      levelSelection.hidden = false;
+      returnToMainElement.hidden = false;
+      boardElement.board = decodeBoard(e.level.serialized);
+    });
+
     recreateBoard();
     updateSelectedTile();
 
@@ -345,7 +325,5 @@
       buildButton.click();
     });
     tiles.src = "assets/tiles.svg";
-
-    generateLevelButtons(levelSelectionSection, levelSelection, returnToMainElement, boardElement, Levels);
   </script>
 </html>
