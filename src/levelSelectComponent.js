@@ -63,4 +63,18 @@ export default class LevelSelectComponent extends HTMLElement {
     shadow.adoptedStyleSheets = [styles];
     shadow.appendChild(list);
   }
+
+  /**
+   * Returns the next level given a current level
+   *
+   * @param {Level} currentLevel
+   */
+  nextLevel(currentLevel) {
+    const next = Levels.findIndex(level => level.name === currentLevel.name);
+    if (next === Levels.length - 1) {
+      return undefined;
+    }
+
+    return Levels[next + 1];
+  }
 }
