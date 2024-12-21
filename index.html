@@ -69,6 +69,7 @@
     </div>
   </body>
   <script type="module">
+    import AppState from "./src/appState.js";
     import { Board, decodeBoard, encodeBoard } from "./src/board.js";
     import BoardComponent from "./src/boardComponent.js";
     import LevelSelectComponent from "./src/levelSelectComponent.js";
@@ -79,6 +80,8 @@
 
     const tickMs = 250;
     const tiles = new Image();
+
+    const appState = new AppState();
 
     /**
      * Creates a generic version of the given tile
@@ -150,10 +153,16 @@
 
     let state;
 
+    appState.addListener((newState) => {
+      if (newState === "None") {
+        returnToMainElement.hidden = true;
+      } else {
+        returnToMainElement.hidden = false;
+      }
+    });
+
     returnToMainElement.addEventListener("click", () => {
-      levelSelectionSection.hidden = false;
-      levelSection.hidden = true;
-      returnToMainElement.hidden = true;
+      appState.current = "None";
     });
 
     function recreateBoard() {
@@ -237,23 +246,52 @@
       timerId = undefined;
     }
 
-    buildButton.addEventListener("click", () => {
-      buildButton.disabled = true;
-      playButton.disabled = false;
-      resetButton.disabled = true;
-      builderElement.hidden = false;
-      gameStateElement.hidden = true;
+    appState.addListener((newState) => {
+      if (newState === "Building") {
+        buildButton.disabled = true;
+        builderElement.hidden = false;
 
-      document.removeEventListener("keydown", handleInput);
+        if (state?.originalBoard) {
+          boardElement.board = state.originalBoard;
+        }
 
-      stopGameClock();
-
-      if (state?.originalBoard) {
-        boardElement.board = state.originalBoard;
+        boardElement.setAttribute("editing", "true");
+        boardElement.render();
+      } else {
+        buildButton.disabled = false;
+        builderElement.hidden = true;
       }
+    });
 
-      boardElement.setAttribute("editing", "true");
-      boardElement.render();
+    appState.addListener((newState) => {
+      if (newState === "Playing") {
+        playButton.disabled = true;
+        resetButton.disabled = false;
+        gameStateElement.hidden = false;
+        playButton.blur(); // Returns focus to the document
+
+        state = new State(boardElement.board);
+        renderGameState(state);
+
+        document.addEventListener("keydown", handleInput);
+
+        startGameClock();
+
+        boardElement.setAttribute("editing", "false");
+        boardElement.render();
+      } else {
+        playButton.disabled = false;
+        resetButton.disabled = true;
+        gameStateElement.hidden = true;
+
+        document.removeEventListener("keydown", handleInput);
+
+        stopGameClock();
+      }
+    });
+
+    buildButton.addEventListener("click", () => {
+      appState.current = "Building";
     });
 
     resetButton.addEventListener("click", () => {
@@ -265,22 +303,7 @@
     });
 
     playButton.addEventListener("click", () => {
-      buildButton.disabled = false;
-      playButton.disabled = true;
-      resetButton.disabled = false;
-      builderElement.hidden = true;
-      gameStateElement.hidden = false;
-      playButton.blur(); // Returns focus to the document
-
-      state = new State(boardElement.board);
-      renderGameState(state);
-
-      document.addEventListener("keydown", handleInput);
-
-      startGameClock();
-
-      boardElement.setAttribute("editing", "false");
-      boardElement.render();
+      appState.current = "Playing";
     });
 
     function updateSelectedTile() {
@@ -310,11 +333,19 @@
       heightInput.value = boardElement.board.height;
     });
 
+    appState.addListener((newState) => {
+      if (newState === "None") {
+        levelSelectionSection.hidden = false;
+        levelSelection.hidden = true;
+      } else {
+        levelSelectionSection.hidden = true;
+        levelSelection.hidden = false;
+      }
+    });
+
     levelSelectElement.addEventListener("levelSelected", (e) => {
-      levelSelectionSection.hidden = true;
-      levelSelection.hidden = false;
-      returnToMainElement.hidden = false;
       boardElement.board = decodeBoard(e.level.serialized);
+      appState.current = "Playing";
     });
 
     recreateBoard();
@@ -322,7 +353,6 @@
 
     tiles.addEventListener("load", () => {
       boardElement.tiles = tiles;
-      buildButton.click();
     });
     tiles.src = "assets/tiles.svg";
   </script>
