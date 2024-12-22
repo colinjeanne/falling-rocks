@@ -1,3 +1,9 @@
 h1 {
   text-align: center;
 }
+
+level-end-popup {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+}

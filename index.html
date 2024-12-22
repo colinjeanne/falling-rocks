@@ -72,11 +72,13 @@
     import AppState from "./src/appState.js";
     import { Board, decodeBoard, encodeBoard } from "./src/board.js";
     import BoardComponent from "./src/boardComponent.js";
+    import LevelEndPopup from "./src/levelEndPopup.js";
     import LevelSelectComponent from "./src/levelSelectComponent.js";
     import { State } from "./src/state.js";
 
     customElements.define("game-board", BoardComponent);
     customElements.define("level-select", LevelSelectComponent);
+    customElements.define("level-end-popup", LevelEndPopup);
 
     const tickMs = 250;
     const tiles = new Image();
@@ -152,6 +154,65 @@
     const resetButton = document.getElementById("reset");
 
     let state;
+    let currentLevel;
+
+    function resetGame() {
+      clearPopups();
+      state.reset();
+      startGameClock();
+      boardElement.board = state.board;
+      boardElement.render();
+      renderGameState(state);
+    }
+
+    function clearPopups() {
+      const popups = document.querySelectorAll("level-end-popup");
+      for (const popup of popups) {
+        popup.parentNode.removeChild(popup);
+      }
+    }
+
+    function showWinScreen() {
+      if (document.querySelector("level-end-popup")) {
+        return;
+      }
+
+      let actionName = undefined;
+      const nextLevel = levelSelectElement.nextLevel(currentLevel);
+      if (nextLevel) {
+        actionName = "Next Level";
+      }
+
+      const popup = new LevelEndPopup("You Win!", actionName);
+      popup.addEventListener("actionSelected", ev => {
+        if (ev.actionName === actionName) {
+          currentLevel = nextLevel;
+          boardElement.board = decodeBoard(nextLevel.serialized);
+          appState.current = "Playing";
+        } else {
+          appState.current = "None";
+        }
+      });
+
+      document.querySelector("body").appendChild(popup);
+    }
+
+    function showLoseScreen() {
+      if (document.querySelector("level-end-popup")) {
+        return;
+      }
+
+      const popup = new LevelEndPopup("You Died!", "Reset");
+      popup.addEventListener("actionSelected", ev => {
+        if (ev.actionName === "Reset") {
+          resetGame();
+        } else {
+          appState.current = "None";
+        }
+      });
+
+      document.querySelector("body").appendChild(popup);
+    }
 
     appState.addListener((newState) => {
       if (newState === "None") {
@@ -171,6 +232,12 @@
 
     function renderGameState(state) {
       const remaining = state.collectablesRemaining;
+      if (state.gameState === "Win") {
+        showWinScreen();
+      } else if (state.gameState === "Lose") {
+        showLoseScreen();
+      }
+
       gameStateElement.textContent = `${state.collected} collected, ${remaining} remaining, ${state.gameState}`;
     }
 
@@ -268,6 +335,9 @@
         playButton.disabled = true;
         resetButton.disabled = false;
         gameStateElement.hidden = false;
+
+        clearPopups();
+
         playButton.blur(); // Returns focus to the document
 
         state = new State(boardElement.board);
@@ -284,6 +354,8 @@
         resetButton.disabled = true;
         gameStateElement.hidden = true;
 
+        clearPopups();
+
         document.removeEventListener("keydown", handleInput);
 
         stopGameClock();
@@ -295,11 +367,7 @@
     });
 
     resetButton.addEventListener("click", () => {
-      state.reset();
-      startGameClock();
-      boardElement.board = state.board;
-      boardElement.render();
-      renderGameState(state);
+      resetGame();
     });
 
     playButton.addEventListener("click", () => {
@@ -344,6 +412,7 @@
     });
 
     levelSelectElement.addEventListener("levelSelected", (e) => {
+      currentLevel = e.level;
       boardElement.board = decodeBoard(e.level.serialized);
       appState.current = "Playing";
     });
