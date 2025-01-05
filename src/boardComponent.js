@@ -152,6 +152,100 @@ function drawTile(context, tiles, tile, x, y, width, height) {
   context.restore();
 }
 
+/**
+ * Draws a rect for the given tile point
+ *
+ * @param {CanvasRenderingContext2D} context
+ * @param {Point} point
+ * @param {number} rows
+ * @param {number} columns
+ * @param {number} rowHeight
+ * @param {number} columnWidth
+ */
+function drawTileRect(context, point, rows, columns, rowHeight, columnWidth) {
+  const x = columnWidth * point[0];
+  const y = rowHeight * point[1];
+
+  context.beginPath();
+
+  if (point[0] !== 0) {
+    context.moveTo(x, y);
+    context.lineTo(x, y + rowHeight);
+  }
+
+  if (point[0] !== columns - 1) {
+    context.moveTo(x + columnWidth, y);
+    context.lineTo(x + columnWidth, y + rowHeight);
+  }
+
+  if (point[1] !== 0) {
+    context.moveTo(x, y);
+    context.lineTo(x + columnWidth, y);
+  }
+
+  if (point[1] !== rows - 1) {
+    context.moveTo(x, y + rowHeight);
+    context.lineTo(x + columnWidth, y + rowHeight);
+  }
+
+  context.stroke();
+}
+
+/**
+ * Draws gridlines with an optional point to highlight
+ *
+ * @param {CanvasRenderingContext2D} context
+ * @param {number} rows
+ * @param {number} columns
+ * @param {Point | undefined} highlightedPoint
+ */
+function drawGrid(context, rows, columns, highlightedPoint) {
+  context.save();
+
+  context.strokeStyle = "#888";
+  context.lineWidth = 2;
+  context.lineCap = "butt";
+
+  const width = context.canvas.width;
+  const height = context.canvas.height;
+
+  // Start at for rows and columns because the zeroth line would be at the edge
+  // of the board and so can be ignored
+
+  context.beginPath();
+
+  const rowHeight = height / rows;
+  for (let row = 1; row < rows; ++row) {
+    const y = rowHeight * row;
+    context.moveTo(0, y);
+    context.lineTo(width, y);
+  }
+
+  const columnWidth = width / columns;
+  for (let column = 1; column < columns; ++column) {
+    const x = columnWidth * column;
+    context.moveTo(x, 0);
+    context.lineTo(x, height);
+  }
+
+  context.stroke();
+
+  if (highlightedPoint) {
+    context.strokeStyle = "cornflowerblue";
+
+    drawTileRect(
+      context,
+      highlightedPoint,
+      rows,
+      columns,
+      rowHeight,
+      columnWidth
+    );
+  }
+
+  context.restore();
+}
+
 export default class BoardComponent extends HTMLElement {
   static observedAttributes = ["tileSize", "editing"];
 
@@ -160,6 +254,12 @@ export default class BoardComponent extends HTMLElement {
 
   /** @type {boolean} */
   #isDragDrawing = false;
+
+  /** @type {Point | undefined} */
+  #hoveredPoint_ = undefined;
+
+  /** @type {Point | undefined} */
+  #previousHoveredPoint = undefined;
 
   /** @type {Tile} */
   selectedTile = Board.EMPTY_TILE;
@@ -227,9 +327,27 @@ export default class BoardComponent extends HTMLElement {
     this.render();
   }
 
+  get #editing() {
+    return this.getAttribute("editing") === "true";
+  }
+
+  get #hoveredPoint() {
+    return this.#hoveredPoint_;
+  }
+
+  /**
+   * Sets the hovered point
+   *
+   * @param {Point | undefined} point
+   */
+  set #hoveredPoint(point) {
+    this.#previousHoveredPoint = this.#hoveredPoint_;
+    this.#hoveredPoint_ = point;
+  }
+
   #updateEditingState() {
-    const editing = this.getAttribute("editing");
-    if (editing !== "true") {
+    if (!this.#editing) {
+      this.#hoveredPoint = undefined;
       this.#removeEventListeners();
     } else {
       this.#addEventListeners();
@@ -239,15 +357,17 @@ export default class BoardComponent extends HTMLElement {
   #addEventListeners() {
     this.addEventListener("mousedown", this.#startDragDrawing);
     this.ownerDocument.addEventListener("mouseup", this.#endDragDrawing);
-    this.addEventListener("mousemove", this.#doDrawDrawing);
-    this.addEventListener("click", this.#updateTile);
+    this.addEventListener("mousemove", this.#handleMouseMove);
+    this.addEventListener("mouseleave", this.#handleMouseLeave);
+    this.addEventListener("click", this.#handleClick);
   }
 
   #removeEventListeners() {
     this.removeEventListener("mousedown", this.#startDragDrawing);
     this.ownerDocument.removeEventListener("mouseup", this.#endDragDrawing);
-    this.removeEventListener("mousemove", this.#doDrawDrawing);
-    this.removeEventListener("click", this.#updateTile);
+    this.removeEventListener("mousemove", this.#handleMouseMove);
+    this.removeEventListener("mouseleave", this.#handleMouseLeave);
+    this.removeEventListener("click", this.#handleClick);
   }
 
   /**
@@ -283,26 +403,61 @@ export default class BoardComponent extends HTMLElement {
   }
 
   /**
-   * Updates tiles in response to drag events
+   * Set the point to the selected tile
    *
-   * @param {MouseEvent} mouseEvent
+   * @param {Point} point
    */
-  #doDrawDrawing = (mouseEvent) => {
-    if (this.#isDragDrawing) {
-      this.#updateTile(mouseEvent);
-    }
-  }
-
-  /**
-   * Updates a tile given a mouse event
-   *
-   * @param {MouseEvent} mouseEvent
-   */
-  #updateTile = (mouseEvent) => {
+  #setTile(point) {
     if (!this.#board) {
       return;
     }
 
+    this.#board.setTile(point, this.selectedTile);
+    this.shadowRoot?.dispatchEvent(new Event("change", { composed: true }));
+  }
+
+  #handleMouseLeave = () => {
+    this.#hoveredPoint = undefined;
+
+    if (
+      (this.#hoveredPoint?.[0] !== this.#previousHoveredPoint?.[0]) ||
+      (this.#hoveredPoint?.[1] !== this.#previousHoveredPoint?.[1])
+    ) {
+      this.render([]);
+    }
+  }
+
+  /**
+   * Handles mouse move events
+   *
+   * @param {MouseEvent} mouseEvent
+   */
+  #handleMouseMove = (mouseEvent) => {
+    const point = this.#pointFromMouseEvent(mouseEvent);
+    if (!point) {
+      return;
+    }
+
+    if (this.#board?.isInBounds(point)) {
+      this.#hoveredPoint = point;
+    } else {
+      this.#hoveredPoint = undefined;
+    }
+
+    if (this.#isDragDrawing) {
+      this.#setTile(point);
+    }
+
+    this.render([point]);
+  }
+
+  /**
+   * Converts a MouseEvent to a point of a tile
+   *
+   * @param {MouseEvent} mouseEvent
+   * @returns {Point | undefined}
+   */
+  #pointFromMouseEvent(mouseEvent) {
     const canvas = this.shadowRoot?.querySelector("canvas");
     if (!canvas) {
       return;
@@ -316,13 +471,22 @@ export default class BoardComponent extends HTMLElement {
 
     const tileSize = Number.parseInt(this.getAttribute("tileSize") || "0");
 
-    const tileX = Math.floor(x / tileSize);
-    const tileY = Math.floor(y / tileSize);
+    return [Math.floor(x / tileSize), Math.floor(y / tileSize)];
+  }
 
-    this.#board.setTile([tileX, tileY], this.selectedTile);
-    this.render([[tileX, tileY]]);
+  /**
+   * Handles click events
+   *
+   * @param {MouseEvent} mouseEvent
+   */
+  #handleClick = (mouseEvent) => {
+    const point = this.#pointFromMouseEvent(mouseEvent);
+    if (!point) {
+      return;
+    }
 
-    this.shadowRoot?.dispatchEvent(new Event("change", { composed: true }));
+    this.#setTile(point);
+    this.render([point]);
   }
 
   /**
@@ -379,5 +543,14 @@ export default class BoardComponent extends HTMLElement {
         tileHeight
       );
     });
+
+    if (this.#editing) {
+      drawGrid(
+        context,
+        this.#board.height,
+        this.#board.width,
+        this.#hoveredPoint
+      );
+    }
   }
 }
