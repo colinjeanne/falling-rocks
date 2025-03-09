@@ -7,10 +7,19 @@
  *  "None"
  * )} ConveyorDirection
  *
+ * @typedef {(
+ *   "Blue" |
+ *   "Green" |
+ *   "None" |
+ *   "Red" |
+ *   "Yellow"
+ * )} KeyColor
+ *
  * @typedef GenericTile
  * @property {"Empty" | "Wall" | "Collectable"} type
  * @property {boolean} justUpdated
  * @property {ConveyorDirection} conveyorDirection
+ * @property {KeyColor} keyColor
  *
  * @typedef {ConveyorDirection} InputDirection
  *
@@ -18,14 +27,17 @@
  * @property {"Player"} type
  * @property {true} isAlive
  * @property {InputDirection} inputDirection
+ * @property {KeyColor} excessKey
  * @property {boolean} justUpdated
  * @property {ConveyorDirection} conveyorDirection
+ * @property {KeyColor} keyColor
  *
  * @typedef DeadPlayerTile
  * @property {"Player"} type
  * @property {false} isAlive
  * @property {boolean} justUpdated
  * @property {ConveyorDirection} conveyorDirection
+ * @property {KeyColor} keyColor
  *
  * @typedef {DeadPlayerTile | LivingPlayerTile} PlayerTile
  *
@@ -44,6 +56,7 @@
  * @property {"Down" | "DownLeft" | "DownRight" | "None"} fallingDirection
  * @property {boolean} justUpdated
  * @property {ConveyorDirection} conveyorDirection
+ * @property {KeyColor} keyColor
  *
  * @typedef {(
  *  "Down" |
@@ -57,14 +70,30 @@
  * @property {FlowDirection | "All"} flowDirection
  * @property {boolean} justUpdated
  * @property {ConveyorDirection} conveyorDirection
+ * @property {KeyColor} keyColor
  *
  * @typedef DirtTile
  * @property {"Dirt"} type
  * @property {FlowDirection | "None"} flowDirection
  * @property {boolean} justUpdated
  * @property {ConveyorDirection} conveyorDirection
+ * @property {KeyColor} keyColor
  *
- * @typedef {DirtTile | GenericTile | PlayerTile | RockTile | WaterTile} Tile
+ * @typedef DoorTile
+ * @property {"Door"} type
+ * @property {Exclude<KeyColor, "None">} color
+ * @property {boolean} justUpdated
+ * @property {"None"} conveyorDirection
+ * @property {"None"} keyColor
+ *
+ * @typedef {(
+ *  DirtTile |
+ *  DoorTile |
+ *  GenericTile |
+ *  PlayerTile |
+ *  RockTile |
+ *  WaterTile
+ * )} Tile
  */
 
 /**
@@ -96,57 +125,112 @@ function appendConveyorDirection(conveyorDirection, encoded) {
 /**
  * Decodes a conveyor direction from an array of characters
  *
- * @param {Omit<Tile, "conveyorDirection">} partialTile
  * @param {string[]} chars
  * @param {number} index The index in the array to decode from
- * @returns {{ tile: Tile, nextIndex: number }}
+ * @returns {{ conveyorDirection: ConveyorDirection, nextIndex: number }}
  */
-function decodeConveyorDirection(partialTile, chars, index) {
-  switch (chars[index]) {
-    case "v":
-      return {
-        tile: /** @type {Tile} */ ({
-          ...partialTile,
-          conveyorDirection: "Down",
-        }),
-        nextIndex: index + 1,
-      };
-
-    case "<":
-      return {
-        tile: /** @type {Tile} */ ({
-          ...partialTile,
-          conveyorDirection: "Left",
-        }),
-        nextIndex: index + 1,
-      };
-
-    case ">":
-      return {
-        tile: /** @type {Tile} */ ({
-          ...partialTile,
-          conveyorDirection: "Right",
-        }),
-        nextIndex: index + 1,
-      };
-
-    case "^":
-      return {
-        tile: /** @type {Tile} */ ({
-          ...partialTile,
-          conveyorDirection: "Up",
-        }),
-        nextIndex: index + 1,
-      };
-  }
+function decodeConveyorDirection(chars, index) {
+  /**
+   * @type {ConveyorDirection}
+   */
+  let conveyorDirection = "None";
+  let nextIndex = index;
 
   // Assume any other character actually is part of another sequence
+  switch (chars[index]) {
+    case "v":
+      conveyorDirection = "Down";
+      ++nextIndex;
+      break;
+
+    case "<":
+      conveyorDirection = "Left";
+      ++nextIndex;
+      break;
+
+    case ">":
+      conveyorDirection = "Right";
+      ++nextIndex;
+      break;
+
+    case "^":
+      conveyorDirection = "Up";
+      ++nextIndex;
+      break;
+  }
+
   return {
-    tile: /** @type {Tile} */ ({
-      ...partialTile,
-      conveyorDirection: "None",
-    }),
-    nextIndex: index,
+    conveyorDirection,
+    nextIndex,
+  };
+}
+
+/**
+ * Appends the key color to an encoded tile
+ *
+ * @param {KeyColor | undefined} keyColor
+ * @param {string} encoded
+ * @returns {string}
+ */
+function appendKeyColor(keyColor, encoded) {
+  switch (keyColor) {
+    case "Blue":
+      return encoded + "b";
+
+    case "Green":
+      return encoded + "g";
+
+    case "Red":
+      return encoded + "r";
+
+    case "Yellow":
+      return encoded + "y";
+
+    default:
+      return encoded;
+  }
+}
+
+/**
+ * Decodes a key color from an array of characters
+ *
+ * @param {string[]} chars
+ * @param {number} index The index in the array to decode from
+ * @returns {{ keyColor: KeyColor, nextIndex: number }}
+ */
+function decodeKeyColor(chars, index) {
+  /**
+   * @type {KeyColor}
+   */
+  let keyColor = "None";
+  let nextIndex = index;
+
+  // Assume any other character actually is part of another sequence
+  switch (chars[index]) {
+    case "b":
+      keyColor = "Blue";
+      ++nextIndex;
+      break;
+
+    case "g":
+      keyColor = "Green";
+      ++nextIndex;
+      break;
+
+    case "r":
+      keyColor = "Red";
+      ++nextIndex;
+      break;
+
+    case "y":
+      keyColor = "Yellow";
+      ++nextIndex;
+      break;
+  }
+
+  return {
+    keyColor,
+    nextIndex,
   };
 }
 
@@ -157,16 +241,29 @@ function decodeConveyorDirection(partialTile, chars, index) {
  * @returns {string}
  */
 function encodeGenericTile(tile) {
+  /** @type {string} */
+  let encoded;
   switch (tile.type) {
     case "Collectable":
-      return "C";
+      encoded = "C";
+      break;
 
     case "Empty":
-      return " ";
+      encoded = " ";
+      break;
 
     case "Wall":
-      return "W";
+      encoded = "W";
+      break;
   }
+
+  return appendKeyColor(
+    tile.keyColor,
+    appendConveyorDirection(
+      tile.conveyorDirection,
+      encoded
+    )
+  );
 }
 
 /**
@@ -174,10 +271,10 @@ function encodeGenericTile(tile) {
  *
  * @param {string[]} chars
  * @param {number} index The index in the array to decode from
- * @returns {{ tile: Omit<GenericTile, "conveyorDirection">, nextIndex: number }}
+ * @returns {{ tile: GenericTile, nextIndex: number }}
  */
 function decodeGenericTile(chars, index) {
-  /** @type {Omit<GenericTile, "conveyorDirection">} */
+  /** @type {Omit<GenericTile, "conveyorDirection" | "keyColor">} */
   let tile;
   switch (chars[index]) {
     case "C":
@@ -196,7 +293,17 @@ function decodeGenericTile(chars, index) {
       throw new Error(`Unexpected generic tile ${chars[index]} at ${index}`);
   }
 
-  return { tile, nextIndex: index + 1 };
+  const decodedConveyorDirection = decodeConveyorDirection(chars, index + 1);
+  const decodedKeyColor = decodeKeyColor(chars, decodedConveyorDirection.nextIndex);
+
+  return {
+    tile: {
+      ...tile,
+      conveyorDirection: decodedConveyorDirection.conveyorDirection,
+      keyColor: decodedKeyColor.keyColor,
+    },
+    nextIndex: decodedKeyColor.nextIndex,
+  };
 }
 
 /**
@@ -206,22 +313,37 @@ function decodeGenericTile(chars, index) {
  * @returns {string}
  */
 function encodeDirtTile(tile) {
+  /** @type {string} */
+  let encoded;
   switch (tile.flowDirection) {
     case "Both":
-      return "D_";
+      encoded = "D_";
+      break;
 
     case "Down":
-      return "Dv";
+      encoded = "Dv";
+      break;
 
     case "Left":
-      return "D<";
+      encoded = "D<";
+      break;
 
     case "None":
-      return "D.";
+      encoded = "D.";
+      break;
 
     case "Right":
-      return "D>";
+      encoded = "D>";
+      break;
   }
+
+  return appendKeyColor(
+    tile.keyColor,
+    appendConveyorDirection(
+      tile.conveyorDirection,
+      encoded
+    )
+  );
 }
 
 /**
@@ -229,12 +351,12 @@ function encodeDirtTile(tile) {
  *
  * @param {string[]} chars
  * @param {number} index The index in the array to decode from
- * @returns {{ tile: Omit<DirtTile, "conveyorDirection">, nextIndex: number }}
+ * @returns {{ tile: DirtTile, nextIndex: number }}
  */
 function decodeDirtTile(chars, index) {
   const flowDirection = chars[index + 1];
 
-  /** @type {Omit<DirtTile, "conveyorDirection">} */
+  /** @type {Omit<DirtTile, "conveyorDirection" | "keyColor">} */
   let tile;
   switch (flowDirection) {
     case "_":
@@ -263,7 +385,64 @@ function decodeDirtTile(chars, index) {
       );
   }
 
-  return { tile, nextIndex: index + 2 };
+  const decodedConveyorDirection = decodeConveyorDirection(chars, index + 2);
+  const decodedKeyColor = decodeKeyColor(chars, decodedConveyorDirection.nextIndex);
+
+  return {
+    tile: {
+      ...tile,
+      conveyorDirection: decodedConveyorDirection.conveyorDirection,
+      keyColor: decodedKeyColor.keyColor,
+    },
+    nextIndex: decodedKeyColor.nextIndex,
+  };
+}
+
+/**
+ * Encodes a door tile
+ *
+ * @param {DoorTile} tile
+ * @returns {string}
+ */
+function encodedDoorTile(tile) {
+  switch (tile.color) {
+    case "Blue":
+      return "Xb";
+
+    case "Green":
+      return "Xg";
+
+    case "Red":
+      return "Xr";
+
+    case "Yellow":
+      return "Xy";
+  }
+}
+
+/**
+ * Decodes a door tile from an array of characters
+ *
+ * @param {string[]} chars
+ * @param {number} index The index in the array to decode from
+ * @returns {{ tile: DoorTile, nextIndex: number }}
+ */
+function decodeDoorTile(chars, index) {
+  const decodedDoorColor = decodeKeyColor(chars, index + 1);
+  if (decodedDoorColor.keyColor === "None") {
+    throw new Error(`Unexpected color ${chars[index + 1]} at ${index + 1}`);
+  }
+
+  return {
+    tile: {
+      type: "Door",
+      color: decodedDoorColor.keyColor,
+      justUpdated: false,
+      conveyorDirection: "None",
+      keyColor: "None",
+    },
+    nextIndex: decodedDoorColor.nextIndex,
+  };
 }
 
 /**
@@ -273,26 +452,42 @@ function decodeDirtTile(chars, index) {
  * @returns {string}
  */
 function encodePlayerTile(tile) {
+  /** @type {string} */
+  let encoded;
   if (tile.isAlive) {
+    encoded = appendKeyColor(tile.excessKey, "Pa");
     switch (tile.inputDirection) {
       case "Down":
-        return "Pav";
+        encoded = `${encoded}v`;
+        break;
 
       case "Left":
-        return "Pa<";
+        encoded = `${encoded}<`;
+        break;
 
       case "None":
-        return "Pa.";
+        encoded = `${encoded}.`;
+        break;
 
       case "Right":
-        return "Pa>";
+        encoded = `${encoded}>`;
+        break;
 
       case "Up":
-        return "Pa^";
+        encoded = `${encoded}^`;
+        break;
     }
+  } else {
+    encoded = "Pd";
   }
 
-  return "Pd";
+  return appendKeyColor(
+    tile.keyColor,
+    appendConveyorDirection(
+      tile.conveyorDirection,
+      encoded
+    )
+  );
 }
 
 /**
@@ -331,33 +526,85 @@ function decodeInputDirection(chars, index) {
  *
  * @param {string[]} chars
  * @param {number} index The index in the array to decode from
- * @returns {{ tile: Omit<PlayerTile, "conveyorDirection">, nextIndex: number }}
+ * @returns {(
+ *  {
+ *    tile: LivingPlayerTile,
+ *    nextIndex: number
+ *  } |
+ *  {
+ *    tile: DeadPlayerTile,
+ *    nextIndex: number
+ *  }
+ * )}
  */
 function decodePlayerTile(chars, index) {
   const status = chars[index + 1];
 
+  /**
+   * @type {boolean}
+   */
+  let isAlive;
   switch (status) {
     case "a":
-      const inputDirection = decodeInputDirection(chars, index + 2);
-      return {
-        tile: /** @type {Omit<LivingPlayerTile, "conveyorDirection">} */ ({
-          type: "Player",
-          isAlive: true,
-          inputDirection,
-          justUpdated: false,
-        }),
-        nextIndex: index + 3,
-      };
+      isAlive = true;
+      break;
 
     case "d":
-      return {
-        tile: { type: "Player", isAlive: false, justUpdated: false },
-        nextIndex: index + 2,
-      };
+      isAlive = false;
+      break;
 
     default:
       throw new Error(`Unexpected player status ${status} at ${index + 1}`);
   }
+
+  if (isAlive) {
+    const decodedExcessKey = decodeKeyColor(chars, index + 2);
+    const inputDirection = decodeInputDirection(
+      chars,
+      decodedExcessKey.nextIndex
+    );
+    const decodedConveyorDirection = decodeConveyorDirection(
+      chars,
+      decodedExcessKey.nextIndex + 1
+    );
+    const decodedKeyColor = decodeKeyColor(
+      chars,
+      decodedConveyorDirection.nextIndex
+    );
+
+    return {
+      tile: {
+        type: "Player",
+        isAlive,
+        inputDirection,
+        excessKey: decodedExcessKey.keyColor,
+        justUpdated: false,
+        conveyorDirection: decodedConveyorDirection.conveyorDirection,
+        keyColor: decodedKeyColor.keyColor,
+      },
+      nextIndex: decodedKeyColor.nextIndex,
+    };
+  }
+
+  const decodedConveyorDirection = decodeConveyorDirection(
+    chars,
+    index + 2
+  );
+  const decodedKeyColor = decodeKeyColor(
+    chars,
+    decodedConveyorDirection.nextIndex
+  );
+
+  return {
+    tile: {
+      type: "Player",
+      isAlive,
+      justUpdated: false,
+      conveyorDirection: decodedConveyorDirection.conveyorDirection,
+      keyColor: decodedKeyColor.keyColor,
+    },
+    nextIndex: decodedKeyColor.nextIndex,
+  };
 }
 
 /**
@@ -367,19 +614,33 @@ function decodePlayerTile(chars, index) {
  * @returns {string}
  */
 function encodeRockTile(tile) {
+  /** @type {string} */
+  let encoded;
   switch (tile.fallingDirection) {
     case "Down":
-      return "Rv";
+      encoded = "Rv";
+      break;
 
     case "DownLeft":
-      return "R<";
+      encoded = "R<";
+      break;
 
     case "DownRight":
-      return "R>";
+      encoded = "R>";
+      break;
 
     case "None":
-      return "R.";
+      encoded = "R.";
+      break;
   }
+
+  return appendKeyColor(
+    tile.keyColor,
+    appendConveyorDirection(
+      tile.conveyorDirection,
+      encoded
+    )
+  );
 }
 
 /**
@@ -387,12 +648,12 @@ function encodeRockTile(tile) {
  *
  * @param {string[]} chars
  * @param {number} index The index in the array to decode from
- * @returns {{ tile: Omit<RockTile, "conveyorDirection">, nextIndex: number }}
+ * @returns {{ tile: RockTile, nextIndex: number }}
  */
 function decodeRockTile(chars, index) {
   const fallingDirection = chars[index + 1];
 
-  /** @type {Omit<RockTile, "conveyorDirection">} */
+  /** @type {Omit<RockTile, "conveyorDirection" | "keyColor">} */
   let tile;
   switch (fallingDirection) {
     case "v":
@@ -425,7 +686,17 @@ function decodeRockTile(chars, index) {
       );
   }
 
-  return { tile, nextIndex: index + 2 };
+  const decodedConveyorDirection = decodeConveyorDirection(chars, index + 2);
+  const decodedKeyColor = decodeKeyColor(chars, decodedConveyorDirection.nextIndex);
+
+  return {
+    tile: {
+      ...tile,
+      conveyorDirection: decodedConveyorDirection.conveyorDirection,
+      keyColor: decodedKeyColor.keyColor,
+    },
+    nextIndex: decodedKeyColor.nextIndex,
+  };
 }
 
 /**
@@ -435,22 +706,37 @@ function decodeRockTile(chars, index) {
  * @returns {string}
  */
 function encodeWaterTile(tile) {
+  /** @type {string} */
+  let encoded;
   switch (tile.flowDirection) {
     case "All":
-      return "~+";
+      encoded = "~+";
+      break;
 
     case "Both":
-      return "~_";
+      encoded = "~_";
+      break;
 
     case "Down":
-      return "~v";
+      encoded = "~v";
+      break;
 
     case "Left":
-      return "~<";
+      encoded = "~<";
+      break;
 
     case "Right":
-      return "~>";
+      encoded = "~>";
+      break;
   }
+
+  return appendKeyColor(
+    tile.keyColor,
+    appendConveyorDirection(
+      tile.conveyorDirection,
+      encoded
+    )
+  );
 }
 
 /**
@@ -458,12 +744,12 @@ function encodeWaterTile(tile) {
  *
  * @param {string[]} chars
  * @param {number} index The index in the array to decode from
- * @returns {{ tile: Omit<WaterTile, "conveyorDirection">, nextIndex: number }}
+ * @returns {{ tile: WaterTile, nextIndex: number }}
  */
 function decodeWaterTile(chars, index) {
   const flowDirection = chars[index + 1];
 
-  /** @type {Omit<WaterTile, "conveyorDirection">} */
+  /** @type {Omit<WaterTile, "conveyorDirection" | "keyColor">} */
   let tile;
   switch (flowDirection) {
     case "+":
@@ -492,7 +778,17 @@ function decodeWaterTile(chars, index) {
       );
   }
 
-  return { tile, nextIndex: index + 2 };
+  const decodedConveyorDirection = decodeConveyorDirection(chars, index + 2);
+  const decodedKeyColor = decodeKeyColor(chars, decodedConveyorDirection.nextIndex);
+
+  return {
+    tile: {
+      ...tile,
+      conveyorDirection: decodedConveyorDirection.conveyorDirection,
+      keyColor: decodedKeyColor.keyColor,
+    },
+    nextIndex: decodedKeyColor.nextIndex,
+  };
 }
 
 /**
@@ -502,32 +798,27 @@ function decodeWaterTile(chars, index) {
  * @returns {string}
  */
 export function encodeTile(tile) {
-  let encoded;
   switch (tile.type) {
     case "Collectable":
     case "Empty":
     case "Wall":
-      encoded = encodeGenericTile(tile);
-      break;
+      return encodeGenericTile(tile);
 
     case "Dirt":
-      encoded = encodeDirtTile(tile);
-      break;
+      return encodeDirtTile(tile);
+
+    case "Door":
+      return encodedDoorTile(tile);
 
     case "Player":
-      encoded = encodePlayerTile(tile);
-      break;
+      return encodePlayerTile(tile);
 
     case "Rock":
-      encoded = encodeRockTile(tile);
-      break;
+      return encodeRockTile(tile);
 
     case "Water":
-      encoded = encodeWaterTile(tile);
-      break;
+      return encodeWaterTile(tile);
   }
-
-  return appendConveyorDirection(tile.conveyorDirection, encoded);
 }
 
 /**
@@ -538,38 +829,28 @@ export function encodeTile(tile) {
  * @returns {{ tile: Tile, nextIndex: number }}
  */
 export function decodeTile(chars, index) {
-  /** @type {{ tile: Omit<Tile, "conveyorDirection">, nextIndex: number }} */
-  let partialDecode;
   switch (chars[index]) {
     case "C":
     case "W":
     case " ":
-      partialDecode = decodeGenericTile(chars, index);
-      break;
+      return decodeGenericTile(chars, index);
 
     case "D":
-      partialDecode = decodeDirtTile(chars, index);
-      break;
+      return decodeDirtTile(chars, index);
 
     case "P":
-      partialDecode = decodePlayerTile(chars, index);
-      break;
+      return decodePlayerTile(chars, index);
 
     case "R":
-      partialDecode = decodeRockTile(chars, index);
-      break;
+      return decodeRockTile(chars, index);
+
+    case "X":
+      return decodeDoorTile(chars, index);
 
     case "~":
-      partialDecode = decodeWaterTile(chars, index);
-      break;
+      return decodeWaterTile(chars, index);
 
     default:
       throw new Error(`Unexpected tile ${chars[index]} at ${index}`);
   }
-
-  return decodeConveyorDirection(
-    partialDecode.tile,
-    chars,
-    partialDecode.nextIndex
-  );
 }

@@ -45,6 +45,7 @@
               <option value="Collectable">Collectable</option>
               <option value="Rock">Rock</option>
               <option value="Dirt">Dirt</option>
+              <option value="Door">Door</option>
               <option value="Player">Player</option>
               <option value="Water">Water</option>
             </select>
@@ -55,6 +56,14 @@
               <option value="Left">Left</option>
               <option value="Right">Right</option>
               <option value="Up">Up</option>
+            </select>
+            <label for="selectedKeyColor">Key Color</label>
+            <select id="selectedKeyColor">
+              <option value="None" selected>None</option>
+              <option value="Blue">Blue</option>
+              <option value="Green">Green</option>
+              <option value="Red">Red</option>
+              <option value="Yellow">Yellow</option>
             </select>
           </div>
           <div>
@@ -90,14 +99,15 @@
      *
      * @param {Tile["type"]} type
      * @param {Tile["conveyorDirection"]} conveyorDirection
+     * @param {Tile["keyColor"]} keyColor
      * @returns {Tile}
      */
-    function createTile(type, conveyorDirection) {
+    function createTile(type, conveyorDirection, keyColor) {
       switch (type) {
         case "Empty":
         case "Wall":
         case "Collectable":
-          return { type, justUpdated: false, conveyorDirection };
+          return { type, justUpdated: false, conveyorDirection, keyColor };
 
         case "Dirt":
           return {
@@ -105,6 +115,17 @@
             flowDirection: "None",
             justUpdated: false,
             conveyorDirection,
+            keyColor,
+          };
+
+        case "Door":
+          return {
+            type,
+            // TODO: This is wrong but good enough for now
+            color: keyColor,
+            justUpdated: false,
+            conveyorDirection,
+            keyColor: "None",
           };
 
         case "Player":
@@ -112,8 +133,10 @@
             type,
             isAlive: true,
             inputDirection: "None",
+            excessKey: "None",
             justUpdated: false,
             conveyorDirection,
+            keyColor,
           };
 
         case "Rock":
@@ -122,6 +145,7 @@
             fallingDirection: "None",
             justUpdated: false,
             conveyorDirection,
+            keyColor,
           };
 
         case "Water":
@@ -130,6 +154,7 @@
             flowDirection: "All",
             justUpdated: false,
             conveyorDirection,
+            keyColor,
           };
       }
     }
@@ -144,6 +169,7 @@
     const selectedTileInput = document.getElementById("selectedTile");
     const selectedConveyorDirectionInput =
       document.getElementById("selectedConveyorDirection");
+    const selectedKeyColorInput = document.getElementById("selectedKeyColor");
     const generatedBoardOutput = document.getElementById("generatedBoard");
     const buildButton = document.getElementById("build");
     const playButton = document.getElementById("play");
@@ -380,11 +406,14 @@
       const conveyorDirection =
         selectedConveyorDirectionInput.selectedOptions[0].value;
 
-      boardElement.selectedTile = createTile(tile, conveyorDirection);
+      const keyColor = selectedKeyColorInput.selectedOptions[0].value;
+
+      boardElement.selectedTile = createTile(tile, conveyorDirection, keyColor);
     }
 
     selectedTileInput.addEventListener("change", updateSelectedTile);
     selectedConveyorDirectionInput.addEventListener("change", updateSelectedTile);
+    selectedKeyColorInput.addEventListener("change", updateSelectedTile);
 
     loadBoard.addEventListener("click", () => {
       const encoded = loadedBoard.value;

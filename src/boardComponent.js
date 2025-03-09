@@ -99,6 +99,24 @@ function drawTile(context, tiles, tile, x, y, width, height) {
     tileIndex = 3;
   } else if (tile.type === "Dirt") {
     tileIndex = 4;
+  } else if (tile.type === "Door") {
+    switch (tile.color) {
+      case "Blue":
+        tileIndex = 9;
+        break;
+
+      case "Green":
+        tileIndex = 10;
+        break;
+
+      case "Red":
+        tileIndex = 11;
+        break;
+
+      case "Yellow":
+        tileIndex = 12;
+        break;
+    }
   } else if (tile.type === "Water" && tile.flowDirection === "All") {
     tileIndex = 7;
   } else if (tile.type === "Water" && tile.flowDirection !== "All") {
@@ -122,6 +140,42 @@ function drawTile(context, tiles, tile, x, y, width, height) {
     width,
     height
   );
+
+  if (tile.keyColor !== "None") {
+    let keyTileIndex;
+    switch (tile.keyColor) {
+      case "Blue":
+        keyTileIndex = 13;
+        break;
+
+      case "Green":
+        keyTileIndex = 14;
+        break;
+
+      case "Red":
+        keyTileIndex = 15;
+        break;
+
+      case "Yellow":
+        keyTileIndex = 16;
+        break;
+    }
+
+    // XXX THIS DRAWS BEYOND THE BOARDER OF THE TILE
+    const keyWidth = tiles.naturalWidth / 3;
+    const keyHeight = tiles.naturalWidth / 3;
+    context.drawImage(
+      tiles,
+      0,
+      tiles.naturalWidth * keyTileIndex,
+      tiles.naturalWidth,
+      tiles.naturalWidth,
+      x + width * 3 / 4 - keyWidth / 2,
+      y + height / 4 - keyHeight / 2,
+      keyWidth,
+      keyHeight
+    );
+  }
 
   switch (tile.conveyorDirection) {
     case "Down":

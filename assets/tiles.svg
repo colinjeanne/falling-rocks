@@ -2,8 +2,55 @@
   version="1.1"
   xmlns="http://www.w3.org/2000/svg"
   width="32"
-  height="288"
+  height="548"
 >
+  <defs>
+    <g id="door">
+      <mask id="door-key-mask">
+        <rect width="100%" height="32" fill="white" />
+        <circle fill="black" cx="16" cy="14" r="4" />
+        <line
+          stroke="black"
+          stroke-width="3"
+          x1="16"
+          y1="17"
+          x2="16"
+          y2="26"
+        />
+      </mask>
+      <path
+        d="
+          M 2,16
+          a 14,14,180,0,1,28,0
+          v 14
+          h -28
+          Z
+        "
+        mask="url(#door-key-mask)"
+      />
+    </g>
+    <g id="key" stroke-width="3" fill="transparent">
+      <circle cx="16" cy="12" r="4" />
+      <line
+        x1="16"
+        y1="15"
+        x2="16"
+        y2="28"
+      />
+      <line
+        x1="16"
+        y1="22"
+        x2="10"
+        y2="22"
+      />
+      <line
+        x1="16"
+        y1="27"
+        x2="10"
+        y2="27"
+      />
+    </g>
+  </defs>
   <rect width="100%" height="32" y="0" fill="black" />
   <rect width="100%" height="32" y="32" fill="red" />
   <rect width="100%" height="32" y="64" fill="green" />
@@ -13,4 +60,15 @@
   <rect width="100%" height="32" y="192" fill="gray" />
   <rect width="100%" height="32" y="224" fill="cyan" />
   <rect width="100%" height="32" y="256" fill="cornflowerblue" />
+  <g>
+    <rect width="100%" height="128" y="288" fill="black" />
+    <use href="#door" y="288" fill="blue" />
+    <use href="#door" y="320" fill="green" />
+    <use href="#door" y="352" fill="red" />
+    <use href="#door" y="384" fill="yellow" />
+  </g>
+  <use href="#key" y="416" stroke="blue" />
+  <use href="#key" y="448" stroke="green" />
+  <use href="#key" y="480" stroke="red" />
+  <use href="#key" y="512" stroke="yellow" />
 </svg>

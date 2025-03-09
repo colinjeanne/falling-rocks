@@ -156,11 +156,8 @@ export class State {
           this.board.setTile(
             pt,
             {
-              type: "Player",
-              isAlive: true,
+              ...tile,
               inputDirection,
-              conveyorDirection: tile.conveyorDirection,
-              justUpdated: tile.justUpdated,
             }
           )
           updatedPoints.push(pt);

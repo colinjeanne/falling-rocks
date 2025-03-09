@@ -148,24 +148,32 @@ const successCases = [
       2,
       2,
       [
-        { type: "Empty", conveyorDirection: "Right", justUpdated: false },
+        {
+          type: "Empty",
+          conveyorDirection: "Right",
+          justUpdated: false,
+          keyColor: "None",
+        },
         {
           type: "Rock",
           fallingDirection: "None",
           conveyorDirection: "None",
           justUpdated: false,
+          keyColor: "None",
         },
         {
           type: "Rock",
           fallingDirection: "None",
           conveyorDirection: "Down",
           justUpdated: false,
+          keyColor: "None",
         },
         {
           type: "Rock",
           fallingDirection: "Down",
           conveyorDirection: "Down",
           justUpdated: false,
+          keyColor: "None",
         },
       ]
     ),

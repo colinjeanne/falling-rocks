@@ -4,8 +4,10 @@
  * @typedef {import("./tile.js").ConveyorDirection} ConveyorDirection
  * @typedef {import("./tile.js").DeadPlayerTile} DeadPlayerTile
  * @typedef {import("./tile.js").DirtTile} DirtTile
+ * @typedef {import("./tile.js").DoorTile} DoorTile
  * @typedef {import("./tile.js").FlowDirection} FlowDirection
  * @typedef {import("./tile.js").GenericTile} GenericTile
+ * @typedef {import("./tile.js").KeyColor} KeyColor
  * @typedef {import("./tile.js").LivingPlayerTile} LivingPlayerTile
  * @typedef {import("./tile.js").RockTile} RockTile
  * @typedef {import("./tile.js").Tile} Tile
@@ -13,6 +15,7 @@
  *
  * @callback PatternCallback
  * @param {Tile} tile The tile to match
+ * @param {TileRegion} region The region that matched for this update
  * @returns {boolean} Whether the pattern matches
  */
 
@@ -23,7 +26,7 @@
  * @returns {PatternCallback}
  */
 function not(pattern) {
-  return (tile) => !pattern(tile);
+  return (tile, region) => !pattern(tile, region);
 }
 
 /**
@@ -34,7 +37,7 @@ function not(pattern) {
  * @returns {PatternCallback}
  */
 function or(pattern1, pattern2) {
-  return (tile) => pattern1(tile) || pattern2(tile);
+  return (tile, region) => pattern1(tile, region) || pattern2(tile, region);
 }
 
 /**
@@ -45,7 +48,7 @@ function or(pattern1, pattern2) {
  * @returns {PatternCallback}
  */
 function and(pattern1, pattern2) {
-  return (tile) => pattern1(tile) && pattern2(tile);
+  return (tile, region) => pattern1(tile, region) && pattern2(tile, region);
 }
 
 /**
@@ -63,6 +66,13 @@ function isTile(patternTile) {
     if (
       patternTile.conveyorDirection &&
       (tile.conveyorDirection !== patternTile.conveyorDirection)
+    ) {
+      return false;
+    }
+
+    if (
+      patternTile.keyColor &&
+      (tile.keyColor !== patternTile.keyColor)
     ) {
       return false;
     }
@@ -236,6 +246,31 @@ function isMovingPlayer(inputDirection) {
 }
 
 /**
+ * Whether a tile is door that can be opened by the specified player
+ *
+ * @param {RegionPoint} playerLocation
+ * @returns {PatternCallback}
+ */
+function isOpenableDoor(playerLocation) {
+  return (tile, region) => {
+    if (tile.type !== "Door") {
+      return false;
+    }
+
+    const playerTile = region[playerLocation[1]][playerLocation[0]];
+    if (!playerTile) {
+      throw new Error(
+        `Invalid region point (${playerLocation[0]}, ${playerLocation[1]})`
+      );
+    }
+
+    return playerTile.type === "Player" &&
+      playerTile.isAlive &&
+      tile.color === playerTile.keyColor;
+  }
+}
+
+/**
  * @typedef {(
  *           [2, 0] |
  *       [1 | 2 | 3, 1] |
@@ -248,17 +283,29 @@ function isMovingPlayer(inputDirection) {
  *   [Tile, Tile, Tile, Tile, Tile],
  *         [Tile, Tile, Tile],
  * ]} TileRegion
- *
+ */
+
+/**
+ * @template T
  * @typedef {(
- *   Omit<DeadPlayerTile, "justUpdated" | "conveyorDirection"> |
- *   Omit<DirtTile, "justUpdated" | "conveyorDirection"> |
- *   Omit<GenericTile, "justUpdated" | "conveyorDirection"> |
+ *  Omit<T, "conveyorDirection" | "justUpdated" | "keyColor"> &
+ *  { keyColor?: KeyColor }
+ * )} _SimpleTile<T>
+ */
+
+/**
+ * @typedef {(
+ *   _SimpleTile<DeadPlayerTile> |
+ *   _SimpleTile<DirtTile> |
+ *   Omit<DoorTile, "justUpdated" | "conveyorDirection"> |
+ *   _SimpleTile<GenericTile> |
  *   Omit<LivingPlayerTile, "justUpdated" | "conveyorDirection"> |
- *   Omit<RockTile, "justUpdated" | "conveyorDirection"> |
- *   Omit<WaterTile, "justUpdated" | "conveyorDirection">
+ *   _SimpleTile<RockTile> |
+ *   _SimpleTile<WaterTile>
  * )} SimpleTile
  *
  * @callback TileUpdateCallback
+ * @param {Tile} tile The tile that is being updated
  * @param {TileRegion} region The region that matched for this update
  * @returns {SimpleTile} The updated tile
  *
@@ -268,7 +315,7 @@ function isMovingPlayer(inputDirection) {
 /**
  * An empty tile after an update
  *
- * @returns {SimpleTile}
+ * @type {TileUpdateCallback}
  */
 function empty() {
   return { type: "Empty" };
@@ -277,42 +324,103 @@ function empty() {
 /**
  * A dead player after an update
  *
- * @returns {SimpleTile}
+ * @type {TileUpdateCallback}
  */
-function deadPlayer() {
-  return { type: "Player", isAlive: false };
+function deadPlayer(tile) {
+  const keyColor = (tile.type === "Player" && tile.isAlive) ?
+    tile.excessKey :
+    undefined;
+  return { type: "Player", isAlive: false, keyColor };
 }
 
 /**
- * A player moved after an update
+ * A tile a player is moving to
  *
  * @param {RegionPoint} originalLocation
  * @returns {TileUpdateCallback}
  */
-function movedPlayer(originalLocation) {
-  return (region) => {
-    const tile = region[originalLocation[1]][originalLocation[0]];
-    if (!tile) {
+function playerMovedTo(originalLocation) {
+  return (tile, region) => {
+    const playerTile = region[originalLocation[1]][originalLocation[0]];
+    if (!playerTile) {
       throw new Error(
         `Invalid region point (${originalLocation[0]}, ${originalLocation[1]})`
       );
     }
 
-    if (tile.type !== "Player") {
+    if (playerTile.type !== "Player") {
       throw new Error(
         `Expected player tile at (${originalLocation[0]}, ${originalLocation[1]}) but got ${tile.type}`
       );
     }
 
-    if (tile.isAlive) {
+    if (playerTile.isAlive) {
+      /** @type {KeyColor} */
+      let excessKey;
+
+      /** @type {KeyColor} */
+      let keyColor;
+
+      if (playerTile.keyColor === "None") {
+        keyColor = tile.keyColor;
+        excessKey = "None";
+      } else if (tile.keyColor !== "None") {
+        keyColor = playerTile.keyColor;
+        excessKey = tile.keyColor;
+      } else if (tile.type === "Door") {
+        keyColor = "None";
+        excessKey = "None";
+      } else {
+        keyColor = playerTile.keyColor;
+        excessKey = "None";
+      }
+
       return {
         type: "Player",
-        isAlive: tile.isAlive,
+        isAlive: playerTile.isAlive,
         inputDirection: "None",
+        keyColor,
+        excessKey,
       };
     }
 
-    return { type: "Player", isAlive: tile.isAlive };
+    return { type: "Player", isAlive: playerTile.isAlive };
+  };
+}
+
+/**
+ * A tile after a player has moved from it
+ *
+ * @type {TileUpdateCallback}
+ */
+function playerMovedFrom(tile) {
+  if (tile.type !== "Player") {
+    throw new Error(`Expected player tile but got ${tile.type}`);
+  }
+
+  if (tile.isAlive) {
+    return { type: "Empty", keyColor: tile.excessKey }
+  }
+
+  return { type: "Empty" };
+}
+
+/**
+ * A living player without input
+ *
+ * @type {TileUpdateCallback}
+ */
+function playerWithoutInput(tile) {
+  if (tile.type !== "Player" || !tile.isAlive) {
+    throw new Error(`Expected living player tile but got ${tile.type}`);
+  }
+
+  /** @type {ConveyorDirection} */
+  const inputDirection = "None";
+
+  return {
+    ...tile,
+    inputDirection,
   };
 }
 
@@ -386,8 +494,8 @@ export const patterns = [
     ],
     [
       [null],
-      [null, empty, null],
-      [null, null, movedPlayer([1, 1])],
+      [null, playerMovedFrom, null],
+      [null, null, playerMovedTo([1, 1])],
     ],
   ],
   [
@@ -402,6 +510,20 @@ export const patterns = [
       [null],
       [null, deadPlayer, null],
       [null, null, deadPlayer],
+    ],
+  ],
+  [
+    "Down conveyors move players through openable doors",
+    [
+      [null],
+      [null, isConveyoredPlayer("Down"), null],
+      [null, null, isOpenableDoor([1, 1]), null, null],
+      [null, null, null],
+    ],
+    [
+      [null],
+      [null, playerMovedFrom, null],
+      [null, null, playerMovedTo([1, 1])],
     ],
   ],
   [
@@ -429,7 +551,7 @@ export const patterns = [
     [
       [null],
       [null, null, null],
-      [null, movedPlayer([2, 2]), empty],
+      [null, playerMovedTo([2, 2]), playerMovedFrom],
     ],
   ],
   [
@@ -443,7 +565,7 @@ export const patterns = [
     [
       [null],
       [null, null, null],
-      [rock("None"), movedPlayer([2, 2]), empty],
+      [rock("None"), playerMovedTo([2, 2]), playerMovedFrom],
     ],
   ],
   [
@@ -475,6 +597,20 @@ export const patterns = [
     ],
   ],
   [
+    "Left conveyors move players through openable doors left",
+    [
+      [null],
+      [null, null, null],
+      [null, isOpenableDoor([2, 2]), isConveyoredPlayer("Left"), null, null],
+      [null, null, null],
+    ],
+    [
+      [null],
+      [null, null, null],
+      [null, playerMovedTo([2, 2]), playerMovedFrom],
+    ],
+  ],
+  [
     "Left conveyored players crash",
     [
       [null],
@@ -499,7 +635,7 @@ export const patterns = [
     [
       [null],
       [null, null, null],
-      [null, empty, movedPlayer([1, 2])],
+      [null, playerMovedFrom, playerMovedTo([1, 2])],
     ],
   ],
   [
@@ -513,7 +649,7 @@ export const patterns = [
     [
       [null],
       [null, null, null],
-      [empty, movedPlayer([0, 2]), rock("None")],
+      [playerMovedFrom, playerMovedTo([0, 2]), rock("None")],
     ],
   ],
   [
@@ -545,6 +681,20 @@ export const patterns = [
     ],
   ],
   [
+    "Right conveyors move players through openable doors right",
+    [
+      [null],
+      [null, null, null],
+      [null, isConveyoredPlayer("Right"), isOpenableDoor([1, 2]), null, null],
+      [null, null, null],
+    ],
+    [
+      [null],
+      [null, null, null],
+      [null, playerMovedFrom, playerMovedTo([1, 2])],
+    ],
+  ],
+  [
     "Right conveyored players crash",
     [
       [null],
@@ -568,8 +718,8 @@ export const patterns = [
     ],
     [
       [null],
-      [null, movedPlayer([2, 2]), null],
-      [null, null, empty],
+      [null, playerMovedTo([2, 2]), null],
+      [null, null, playerMovedFrom],
     ],
   ],
   [
@@ -596,8 +746,8 @@ export const patterns = [
     ],
     [
       [rock("None")],
-      [null, movedPlayer([2, 2]), null],
-      [null, null, empty],
+      [null, playerMovedTo([2, 2]), null],
+      [null, null, playerMovedFrom],
     ],
   ],
   [
@@ -626,6 +776,20 @@ export const patterns = [
       [null],
       [null, deadPlayer, null],
       [null, null, deadPlayer],
+    ],
+  ],
+  [
+    "Up conveyors move players up",
+    [
+      [null],
+      [null, isOpenableDoor([2, 2]), null],
+      [null, null, isConveyoredPlayer("Up"), null, null],
+      [null, null, null],
+    ],
+    [
+      [null],
+      [null, playerMovedTo([2, 2]), null],
+      [null, null, playerMovedFrom],
     ],
   ],
   [
@@ -1082,8 +1246,22 @@ export const patterns = [
     ],
     [
       [null],
-      [null, empty, null],
-      [null, null, movedPlayer([1, 1])],
+      [null, playerMovedFrom, null],
+      [null, null, playerMovedTo([1, 1])],
+    ],
+  ],
+  [
+    "Down-moving players move into openable doors",
+    [
+      [null],
+      [null, isMovingPlayer("Down"), null],
+      [null, null, isOpenableDoor([1, 1]), null, null],
+      [null, null, null],
+    ],
+    [
+      [null],
+      [null, playerMovedFrom, null],
+      [null, null, playerMovedTo([1, 1])],
     ],
   ],
   [
@@ -1097,7 +1275,7 @@ export const patterns = [
     [
       [null],
       [null, null, null],
-      [null, null, movedPlayer([2, 2])],
+      [null, null, playerWithoutInput],
     ],
   ],
   [
@@ -1111,7 +1289,21 @@ export const patterns = [
     [
       [null],
       [null, null, null],
-      [null, movedPlayer([2, 2]), empty],
+      [null, playerMovedTo([2, 2]), playerMovedFrom],
+    ],
+  ],
+  [
+    "Left-moving players move into openable doors",
+    [
+      [null],
+      [null, null, null],
+      [null, isOpenableDoor([2, 2]), isMovingPlayer("Left"), null, null],
+      [null, null, null],
+    ],
+    [
+      [null],
+      [null, null, null],
+      [null, playerMovedTo([2, 2]), playerMovedFrom],
     ],
   ],
   [
@@ -1125,7 +1317,7 @@ export const patterns = [
     [
       [null],
       [null, null, null],
-      [rock("None"), movedPlayer([2, 2]), empty],
+      [rock("None"), playerMovedTo([2, 2]), playerMovedFrom],
     ],
   ],
   [
@@ -1139,7 +1331,7 @@ export const patterns = [
     [
       [null],
       [null, null, null],
-      [null, null, movedPlayer([2, 2])],
+      [null, null, playerWithoutInput],
     ],
   ],
   [
@@ -1153,7 +1345,21 @@ export const patterns = [
     [
       [null],
       [null, null, null],
-      [null, empty, movedPlayer([1, 2])],
+      [null, playerMovedFrom, playerMovedTo([1, 2])],
+    ],
+  ],
+  [
+    "Right-moving players move into empty spaces",
+    [
+      [null],
+      [null, null, null],
+      [null, isMovingPlayer("Right"), isOpenableDoor([1, 2]), null, null],
+      [null, null, null],
+    ],
+    [
+      [null],
+      [null, null, null],
+      [null, playerMovedFrom, playerMovedTo([1, 2])],
     ],
   ],
   [
@@ -1167,7 +1373,7 @@ export const patterns = [
     [
       [null],
       [null, null, null],
-      [empty, movedPlayer([0, 2]), rock("None")],
+      [playerMovedFrom, playerMovedTo([0, 2]), rock("None")],
     ],
   ],
   [
@@ -1181,7 +1387,7 @@ export const patterns = [
     [
       [null],
       [null, null, null],
-      [null, null, movedPlayer([2, 2])],
+      [null, null, playerWithoutInput],
     ],
   ],
   [
@@ -1194,8 +1400,22 @@ export const patterns = [
     ],
     [
       [null],
-      [null, movedPlayer([2, 2]), null],
-      [null, null, empty],
+      [null, playerMovedTo([2, 2]), null],
+      [null, null, playerMovedFrom],
+    ],
+  ],
+  [
+    "Up-moving players move into openable doors",
+    [
+      [null],
+      [null, isOpenableDoor([2, 2]), null],
+      [null, null, isMovingPlayer("Up"), null, null],
+      [null, null, null],
+    ],
+    [
+      [null],
+      [null, playerMovedTo([2, 2]), null],
+      [null, null, playerMovedFrom],
     ],
   ],
   [
@@ -1208,8 +1428,8 @@ export const patterns = [
     ],
     [
       [rock("None")],
-      [null, movedPlayer([2, 2]), null],
-      [null, null, empty],
+      [null, playerMovedTo([2, 2]), null],
+      [null, null, playerMovedFrom],
     ],
   ],
   [
@@ -1223,7 +1443,7 @@ export const patterns = [
     [
       [null],
       [null, null, null],
-      [null, null, movedPlayer([2, 2])],
+      [null, null, playerWithoutInput],
     ],
   ],
 ];
@@ -1232,15 +1452,16 @@ export const patterns = [
  * Whether a row from a region matches the corresponding row from a pattern
  *
  * @template {number} index
- * @template {TileRegion[index]} T
  * @template {PatternRegion[index]} U
- * @param {T} regionRow
+ * @param {TileRegion} tileRegion
+ * @param {0 | 1 | 2 | 3} tileRegionRowIndex
  * @param {U} patternRegionRow
  */
-function rowsMatch(regionRow, patternRegionRow) {
-  for (let index = 0; index < regionRow.length; ++index) {
+function rowsMatch(tileRegion, tileRegionRowIndex, patternRegionRow) {
+  const row = tileRegion[tileRegionRowIndex];
+  for (let index = 0; index < row.length; ++index) {
     const pattern = patternRegionRow[index];
-    if (pattern && !pattern(regionRow[index])) {
+    if (pattern && !pattern(row[index], tileRegion)) {
       return false;
     }
   }
@@ -1255,10 +1476,10 @@ function rowsMatch(regionRow, patternRegionRow) {
  * @param {PatternRegion} patternRegion
  */
 function matcher(region, patternRegion) {
-  return rowsMatch(region[3], patternRegion[3]) &&
-    rowsMatch(region[2], patternRegion[2]) &&
-    rowsMatch(region[1], patternRegion[1]) &&
-    rowsMatch(region[0], patternRegion[0]);
+  return rowsMatch(region, 3, patternRegion[3]) &&
+    rowsMatch(region, 2, patternRegion[2]) &&
+    rowsMatch(region, 1, patternRegion[1]) &&
+    rowsMatch(region, 0, patternRegion[0]);
 }
 
 /**
@@ -1318,13 +1539,24 @@ function getPointCenteredRegion(board, pt) {
  * @param {Tile} tile
  * @param {TileRegion} region
  * @param {TileUpdate} tileUpdate
+ * @returns {Tile}
  */
 function applyTileUpdate(tile, region, tileUpdate) {
-  return tileUpdate ? {
-    ...tileUpdate(region),
+  const updated = tileUpdate?.(tile, region) || tile;
+  if (updated.type === "Door") {
+    return {
+      ...updated,
+      justUpdated: true,
+      conveyorDirection: "None",
+    };
+  }
+
+  return {
+    ...updated,
     justUpdated: true,
-    conveyorDirection: tile.conveyorDirection
-  } : tile;
+    conveyorDirection: tile.conveyorDirection,
+    keyColor: updated.keyColor ?? tile.keyColor,
+  };
 }
 
 /**
