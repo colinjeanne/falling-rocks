@@ -12,6 +12,7 @@ export class Board {
     type: "Empty",
     justUpdated: false,
     conveyorDirection: "None",
+    keyColor: "None",
   };
 
   /** @type {Tile} */
@@ -19,6 +20,7 @@ export class Board {
     type: "Wall",
     justUpdated: false,
     conveyorDirection: "None",
+    keyColor: "None",
   };
 
   /**

@@ -107,6 +107,35 @@ describe("applyPatternTileUpdates", function () {
     stabilizeState(state, intermediateBoards);
   });
 
+  it("drops rocks through keys", function () {
+    const board = [
+      ["R."],
+      [" b"],
+      [" "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" "],
+        ["Rvb"],
+        [" "],
+      ],
+      [
+        [" "],
+        [" b"],
+        ["Rv"],
+      ],
+      [
+        [" "],
+        [" b"],
+        ["R."],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
   it("rocks don't fall with gaps", function () {
     const board = [
       ["R."],
@@ -633,6 +662,36 @@ describe("applyPatternTileUpdates", function () {
     stabilizeState(state, intermediateBoards);
   });
 
+  it("ensures water flows through keys", function () {
+    const board = [
+      ["~+"],
+      [" b"],
+      [" "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    /** @type {TestBoard[]} */
+    const intermediateBoards = [
+      [
+        ["~+"],
+        ["~vb"],
+        [" "],
+      ],
+      [
+        ["~+"],
+        ["~vb"],
+        ["~v"],
+      ],
+      [
+        ["~+"],
+        ["~vb"],
+        ["~_"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
   it("ensures down-flowing water kills a player", function () {
     const board = [
       ["~+"],
@@ -1132,6 +1191,47 @@ describe("applyPatternTileUpdates", function () {
     stabilizeState(state, intermediateBoards);
   });
 
+  it("conveys living players through keys down", function () {
+    const board = [
+      ["Pa.v"],
+      [" vb"],
+      [" "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" v"],
+        ["Pa.vb"],
+        [" "],
+      ],
+      [
+        [" v"],
+        [" v"],
+        ["Pa.b"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("conveys living players through openable doors down", function () {
+    const board = [
+      ["Pa.vb"],
+      ["Xb"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" v"],
+        ["Pa."],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
   it("conveys dead players down", function () {
     const board = [
       ["Pdv"],
@@ -1145,6 +1245,30 @@ describe("applyPatternTileUpdates", function () {
         [" v"],
         ["Pd"],
         [" "],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("conveys dead players through keys down", function () {
+    const board = [
+      ["Pdv"],
+      [" vb"],
+      [" "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" v"],
+        ["Pdvb"],
+        [" "],
+      ],
+      [
+        [" v"],
+        [" vb"],
+        ["Pd"],
       ],
     ];
 
@@ -1204,6 +1328,39 @@ describe("applyPatternTileUpdates", function () {
     stabilizeState(state, intermediateBoards);
   });
 
+  it("conveys living players through keys left", function () {
+    const board = [
+      [" ", " <b", "Pa.<"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" ", "Pa.<b", " <"],
+      ],
+      [
+        ["Pa.b", " <", " <"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("conveys living players through openable doors left", function () {
+    const board = [
+      ["Xb", "Pa.<b"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["Pa.", " <"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
   it("conveys dead players left", function () {
     const board = [
       [" ", " ", "Pd<"],
@@ -1213,6 +1370,24 @@ describe("applyPatternTileUpdates", function () {
     const intermediateBoards = [
       [
         [" ", "Pd", " <"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("conveys dead players through keys left", function () {
+    const board = [
+      [" ", " <b", "Pd<"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" ", "Pd<b", " <"],
+      ],
+      [
+        ["Pd", " <b", " <"],
       ],
     ];
 
@@ -1324,6 +1499,39 @@ describe("applyPatternTileUpdates", function () {
     stabilizeState(state, intermediateBoards);
   });
 
+  it("conveys living players through keys right", function () {
+    const board = [
+      ["Pa.>", " >b", " "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" >", "Pa.>b", " "],
+      ],
+      [
+        [" >", " >", "Pa.b"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("conveys living players through openable doors right", function () {
+    const board = [
+      ["Pa.>b", "Xb"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" >", "Pa."],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
   it("conveys dead players right", function () {
     const board = [
       ["Pd>", " ", " "],
@@ -1333,6 +1541,24 @@ describe("applyPatternTileUpdates", function () {
     const intermediateBoards = [
       [
         [" >", "Pd", " "],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("conveys dead players through keys right", function () {
+    const board = [
+      ["Pd>", " >b", " "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" >", "Pd>b", " "],
+      ],
+      [
+        [" >", " >b", "Pd"],
       ],
     ];
 
@@ -1448,6 +1674,47 @@ describe("applyPatternTileUpdates", function () {
     stabilizeState(state, intermediateBoards);
   });
 
+  it("conveys living players through keys up", function () {
+    const board = [
+      [" "],
+      [" ^b"],
+      ["Pa.^"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" "],
+        ["Pa.^b"],
+        [" ^"],
+      ],
+      [
+        ["Pa.b"],
+        [" ^"],
+        [" ^"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("conveys living players through openable doors up", function () {
+    const board = [
+      ["Xb"],
+      ["Pa.^b"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["Pa."],
+        [" ^"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
   it("conveys dead players up", function () {
     const board = [
       [" "],
@@ -1460,6 +1727,30 @@ describe("applyPatternTileUpdates", function () {
       [
         [" "],
         ["Pd"],
+        [" ^"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("conveys dead players through keys up", function () {
+    const board = [
+      [" "],
+      [" ^b"],
+      ["Pd^"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" "],
+        ["Pd^b"],
+        [" ^"],
+      ],
+      [
+        ["Pd"],
+        [" ^b"],
         [" ^"],
       ],
     ];
@@ -1787,6 +2078,175 @@ describe("applyPatternTileUpdates", function () {
         ["R."],
         ["Pa."],
         [" "],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("moving living players pick up keys", function () {
+    const board = [
+      ["Pa>", " b"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" ", "Pa.b"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("moving living players with keys do not pick up keys", function () {
+    const board = [
+      ["Pa>g", " b"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" ", "Pab.g"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("moving living players drop excess keys", function () {
+    const board = [
+      ["Pab>g", " "],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" b", "Pa.g"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("stuck moving living players with keys do not duplicate keys", function () {
+    const board = [
+      ["Pa>b"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["Pa.b"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("down-moving living players open doors with matching color", function () {
+    const board = [
+      ["Pavb"],
+      ["Xb"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" "],
+        ["Pa."],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("left-moving living players open doors with matching color", function () {
+    const board = [
+      ["Xb", "Pa<b"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["Pa.", " "],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("right-moving living players open doors with matching color", function () {
+    const board = [
+      ["Pa>b", "Xb"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        [" ", "Pa."],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("up-moving living players open doors with matching color", function () {
+    const board = [
+      ["Xb"],
+      ["Pa^b"]
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["Pa."],
+        [" "],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("moving living players do not open doors with mismatched color", function () {
+    const board = [
+      ["Pa>g", "Xb"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["Pa.g", "Xb"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("moving living players do not open doors with the excess key", function () {
+    const board = [
+      ["Pag>b", "Xg"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["Pag.b", "Xg"],
+      ],
+    ];
+
+    stabilizeState(state, intermediateBoards);
+  });
+
+  it("killed players drop excess keys", function () {
+    const board = [
+      ["Pag.>b"],
+    ];
+    const state = new State(arrayToBoard(board));
+
+    const intermediateBoards = [
+      [
+        ["Pd>g"],
       ],
     ];
 
